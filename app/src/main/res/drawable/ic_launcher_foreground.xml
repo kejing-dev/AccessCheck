@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- turning circle: eight white dashes, the one at the lower right red ("bumped here") -->
+    <path android:pathData="M54,22 A32,32 0 0,1 70,26.3" android:strokeColor="#FFFFFFFF" android:strokeWidth="4" android:strokeLineCap="round" android:fillColor="#00000000" />
+    <path android:pathData="M77.7,31.1 A32,32 0 0,1 84.5,45.7" android:strokeColor="#FFFFFFFF" android:strokeWidth="4" android:strokeLineCap="round" android:fillColor="#00000000" />
+    <path android:pathData="M86,54 A32,32 0 0,1 81.7,70" android:strokeColor="#FFFFFFFF" android:strokeWidth="4" android:strokeLineCap="round" android:fillColor="#00000000" />
+    <path android:pathData="M76.9,77.7 A32,32 0 0,1 62.3,84.5" android:strokeColor="#FFFF5F52" android:strokeWidth="5" android:strokeLineCap="round" android:fillColor="#00000000" />
+    <path android:pathData="M54,86 A32,32 0 0,1 38,81.7" android:strokeColor="#FFFFFFFF" android:strokeWidth="4" android:strokeLineCap="round" android:fillColor="#00000000" />
+    <path android:pathData="M30.3,76.9 A32,32 0 0,1 23.5,62.3" android:strokeColor="#FFFFFFFF" android:strokeWidth="4" android:strokeLineCap="round" android:fillColor="#00000000" />
+    <path android:pathData="M22,54 A32,32 0 0,1 26.3,38" android:strokeColor="#FFFFFFFF" android:strokeWidth="4" android:strokeLineCap="round" android:fillColor="#00000000" />
+    <path android:pathData="M31.1,30.3 A32,32 0 0,1 45.7,23.5" android:strokeColor="#FFFFFFFF" android:strokeWidth="4" android:strokeLineCap="round" android:fillColor="#00000000" />
+    <!-- wheelchair side view: rear wheel with hub, seat + backrest + push handle, footrest, front caster -->
+    <path android:pathData="M47,62m-11,0a11,11 0 1,0 22,0a11,11 0 1,0 -22,0" android:strokeColor="#FFFFFFFF" android:strokeWidth="5" android:fillColor="#00000000" />
+    <path android:pathData="M47,62m-3,0a3,3 0 1,0 6,0a3,3 0 1,0 -6,0" android:fillColor="#FFFFFFFF" />
+    <path android:pathData="M49,32 L49,51 L63,51 L69,64" android:strokeColor="#FFFFFFFF" android:strokeWidth="5" android:strokeLineCap="round" android:strokeLineJoin="round" android:fillColor="#00000000" />
+    <path android:pathData="M49,33 L56,33" android:strokeColor="#FFFFFFFF" android:strokeWidth="5" android:strokeLineCap="round" android:fillColor="#00000000" />
+    <path android:pathData="M66,70 L74,70" android:strokeColor="#FFFFFFFF" android:strokeWidth="5" android:strokeLineCap="round" android:fillColor="#00000000" />
+    <path android:pathData="M69,69m-4,0a4,4 0 1,0 8,0a4,4 0 1,0 -8,0" android:fillColor="#FFFFFFFF" />
+</vector>

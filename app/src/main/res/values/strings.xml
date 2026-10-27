@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- English. Copy from the design package `copy.en`; the Chinese mirror is in values-zh. -->
+<resources>
+    <string name="app_name">Access Check</string>
+
+    <!-- console status words -->
+    <string name="status_starting">Getting ready…</string>
+    <string name="status_scanning">Looking for the floor…</string>
+    <string name="status_no_chair">No wheelchair yet</string>
+    <string name="status_pushing">Pushing</string>
+    <string name="status_waiting_behind">Stand behind the wheelchair</string>
+    <string name="status_parked">Stopped</string>
+    <string name="status_pin">Flagging an issue</string>
+    <string name="status_turning">Turning…</string>
+    <string name="status_lost">Tracking lost</string>
+
+    <!-- console buttons -->
+    <string name="place_chair">Place wheelchair</string>
+    <string name="chair_manual">Manual 68 × 110 cm</string>
+    <string name="chair_power">Power 70 × 120 cm</string>
+    <string name="chair_manual_short">Manual</string>
+    <string name="chair_power_short">Power</string>
+    <string name="push">Push</string>
+    <string name="park">Stop</string>
+    <string name="turn">Turn around</string>
+    <string name="rot_left">Left 15°</string>
+    <string name="rot_right">Right 15°</string>
+    <string name="height_title">See from</string>
+    <string name="height_stand">Standing</string>
+    <string name="height_seat">Seated 1.20 m</string>
+    <string name="height_child">Child 1.00 m</string>
+    <string name="height_seat_short">Seated</string>
+    <string name="height_child_short">Child</string>
+    <string name="pin">Flag issue</string>
+    <string name="report">Report</string>
+    <string name="stick_hint">Thumbstick left / right turns the chair</string>
+
+    <!-- icon-only controls -->
+    <string name="action_more">More</string>
+    <string name="action_close">Close</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_exit">Exit</string>
+
+    <!-- worded buttons -->
+    <string name="action_cancel">Cancel</string>
+    <string name="action_clear">Clear</string>
+    <string name="action_got_it">Got it</string>
+    <string name="action_confirm">Confirm</string>
+    <string name="action_save">Save report</string>
+    <string name="action_park_drag">Stop and drag</string>
+
+    <!-- chair plate -->
+    <string name="plate_turn_idle">Try a turn</string>
+    <string name="plate_turn_pass">Room to turn ✓ 1.5 m</string>
+    <string name="plate_turn_fail">Can\'t turn · %1$s short by the %2$s</string>
+    <string name="plate_clear_short">No room to park here: %1$s short by the %2$s</string>
+
+    <!-- door plate -->
+    <string name="door_about">about %1$s</string>
+    <string name="door_pass">Fits</string>
+    <string name="door_tight">Tight · hands will scrape</string>
+    <string name="door_fail">Too narrow</string>
+    <string name="door_to_measure">Measure to confirm</string>
+    <string name="door_threshold">Threshold</string>
+    <string name="threshold_unset">not set · tap to pick</string>
+    <string name="threshold_none">none</string>
+    <string name="threshold_1">1 cm · needs a small ramp</string>
+    <string name="threshold_2">2 cm · front wheels will catch</string>
+    <string name="threshold_3">3 cm+ · front wheels will catch</string>
+    <string name="threshold_short_none">none</string>
+    <string name="threshold_short_1">1 cm</string>
+    <string name="threshold_short_2">2 cm</string>
+    <string name="threshold_short_3">3+</string>
+    <string name="measured_row">I measured with a tape</string>
+    <string name="measured_note">Door open at 90°, leaf to frame (ADA: ≥ 81.5 cm)</string>
+    <string name="door_title">Door %1$d</string>
+    <string name="door_measured">measured</string>
+    <string name="door_not_measured">not measured</string>
+
+    <!-- height readout -->
+    <string name="lower_by">%1$s lower ↓</string>
+    <string name="higher_by">%1$s higher ↑</string>
+    <string name="at_height">That\'s the height ✓</string>
+    <string name="eye_label_seat">Seated eyes are here</string>
+    <string name="eye_label_child">A child\'s eyes are here</string>
+
+    <!-- pin tags -->
+    <string name="tag_reach">Out of reach</string>
+    <string name="tag_see">Can\'t see</string>
+    <string name="tag_hazard">Hazard</string>
+
+    <!-- hints -->
+    <string name="hint_scanning">Look slowly around the room and the floor</string>
+    <string name="hint_hit">Bumped: %1$s</string>
+    <string name="hint_stuck">Stuck in a wall?</string>
+    <string name="hint_wait_behind">Step behind the wheelchair to start pushing</string>
+    <string name="hint_saved">Saved: %1$s</string>
+    <string name="hint_pin_mode">Tap the spot you think is a problem</string>
+    <string name="hint_lost">Tracking lost, stand still</string>
+    <string name="hint_pins_full">No more pins, see the report</string>
+    <string name="hint_scuffs_full">Too many scuffs, see the report</string>
+    <string name="hint_sit_down">Find a stool and sit down</string>
+    <string name="hint_crouch">Crouch to a child\'s height</string>
+    <string name="hint_threshold_catch">Threshold %1$s · front wheels will catch</string>
+    <string name="hint_door_blocked">Too narrow: the chair won\'t fit through</string>
+
+    <!-- coach -->
+    <string name="coach">Walk forward and the wheelchair follows. Anything it bumps turns red.</string>
+
+    <!-- dialogs -->
+    <string name="dialog_clear">Clear all scuffs and pins? Turn results go too. Tape measurements stay.</string>
+    <string name="dialog_unavailable">Can\'t run right now: it needs Full Space and permission to sense the room. Open it again from the app list.</string>
+
+    <!-- menu -->
+    <string name="menu_chair">Wheelchair</string>
+    <string name="menu_language">Language</string>
+    <string name="menu_units">Units</string>
+    <string name="menu_clear">Clear scuffs and pins</string>
+    <string name="lang_system">System</string>
+    <string name="lang_zh">中文</string>
+    <string name="lang_en">English</string>
+    <string name="unit_cm">cm</string>
+    <string name="unit_in">in</string>
+
+    <!-- report -->
+    <string name="report_title">Access report</string>
+    <string name="report_empty">Push the wheelchair around; issues show up here</string>
+    <string name="report_chair">Wheelchair</string>
+    <string name="report_turn">Turning</string>
+    <string name="report_clear">Room to park</string>
+    <string name="report_clear_note">Only says a chair can stand here, not that a side transfer works (ADA toilet transfer needs 152.5 × 142 cm)</string>
+    <string name="report_doors">Doors</string>
+    <string name="report_scuffs">Scuffs</string>
+    <string name="report_pins">Pins</string>
+    <string name="report_turn_pass">room to turn</string>
+    <string name="report_turn_fail">can\'t turn, %1$s short by the %2$s</string>
+    <string name="report_clear_row">no room to park, %1$s short by the %2$s</string>
+    <string name="report_door_row">%1$s %2$s · threshold %3$s · %4$s</string>
+    <string name="report_scuff_row">%1$s · %2$s up</string>
+    <string name="report_pin_row">%1$s · %2$s · %3$s up</string>
+    <string name="report_child_mode">(child height)</string>
+    <string name="disclaimer">Based on ADA 2010 dimensions. Not a professional assessment.</string>
+    <string name="report_refs">Reference sizes (ADA 2010): turning circle ⌀152.5 cm; door clear width ≥ 81.5 cm; threshold ≤ 1.3 cm; side reach 38–122 cm.</string>
+    <string name="report_verdict_pass">fits</string>
+    <string name="report_verdict_tight">tight</string>
+    <string name="report_verdict_fail">too narrow</string>
+    <string name="report_verdict_measure">to measure</string>
+    <string name="report_file_title">Access Check · %1$s</string>
+
+    <!-- place names -->
+    <string name="loc_door_wall">Door %1$d, %2$s wall going in · %3$s from the door</string>
+    <string name="loc_door_thing">%1$s · %2$s from door %3$d</string>
+    <string name="loc_start_wall">Wall · %1$s from the start</string>
+    <string name="loc_start_thing">%1$s · %2$s from the start</string>
+    <string name="hand_left">left-hand</string>
+    <string name="hand_right">right-hand</string>
+    <string name="place_middle">the middle of the room</string>
+
+    <!-- obstacle names -->
+    <string name="obs_wall">wall</string>
+    <string name="obs_table">table</string>
+    <string name="obs_cabinet">cabinet</string>
+    <string name="obs_washing_machine">washing machine</string>
+    <string name="obs_refrigerator">fridge</string>
+    <string name="obs_bed">bed</string>
+    <string name="obs_sofa">sofa</string>
+    <string name="obs_chair">chair</string>
+    <string name="obs_low">low obstacle</string>
+    <string name="obs_other">obstacle</string>
+
+    <!-- units -->
+    <string name="fmt_cm">%1$d cm</string>
+    <string name="fmt_in">%1$s in</string>
+    <string name="fmt_m">%1$s m</string>
+    <string name="fmt_ft">%1$s ft</string>
+    <string name="reach_low">38 cm</string>
+    <string name="reach_high">122 cm</string>
+    <string name="reach_note">unobstructed</string>
+</resources>

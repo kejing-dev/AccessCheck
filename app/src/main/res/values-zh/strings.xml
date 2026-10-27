@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 中文。文案来自设计包 copy.zh。 -->
+<resources>
+    <string name="app_name">无障碍体检</string>
+
+    <string name="status_starting">准备中…</string>
+    <string name="status_scanning">找地面…</string>
+    <string name="status_no_chair">没放轮椅</string>
+    <string name="status_pushing">推着走</string>
+    <string name="status_waiting_behind">等你站到轮椅后面</string>
+    <string name="status_parked">停着</string>
+    <string name="status_pin">标问题中</string>
+    <string name="status_turning">转圈中…</string>
+    <string name="status_lost">定位丢失</string>
+
+    <string name="place_chair">放轮椅</string>
+    <string name="chair_manual">手动 68×110 cm</string>
+    <string name="chair_power">电动 70×120 cm</string>
+    <string name="chair_manual_short">手动</string>
+    <string name="chair_power_short">电动</string>
+    <string name="push">推着走</string>
+    <string name="park">停下</string>
+    <string name="turn">转一圈</string>
+    <string name="rot_left">左转 15°</string>
+    <string name="rot_right">右转 15°</string>
+    <string name="height_title">换高度看</string>
+    <string name="height_stand">站着</string>
+    <string name="height_seat">坐轮椅 1.20 m</string>
+    <string name="height_child">小孩 1.00 m</string>
+    <string name="height_seat_short">坐轮椅</string>
+    <string name="height_child_short">小孩</string>
+    <string name="pin">标问题</string>
+    <string name="report">报告</string>
+    <string name="stick_hint">摇杆左右转动轮椅</string>
+
+    <string name="action_more">更多</string>
+    <string name="action_close">关闭</string>
+    <string name="action_delete">删除</string>
+    <string name="action_exit">退出</string>
+
+    <string name="action_cancel">取消</string>
+    <string name="action_clear">清除</string>
+    <string name="action_got_it">知道了</string>
+    <string name="action_confirm">确定</string>
+    <string name="action_save">保存报告</string>
+    <string name="action_park_drag">停下来拖</string>
+
+    <string name="plate_turn_idle">转一圈看看</string>
+    <string name="plate_turn_pass">转得开 ✓ 1.5 m</string>
+    <string name="plate_turn_fail">转不开 · 靠%2$s那边差 %1$s</string>
+    <string name="plate_clear_short">这儿停不下一台轮椅：靠%2$s那边差 %1$s</string>
+
+    <string name="door_about">约 %1$s</string>
+    <string name="door_pass">过得去</string>
+    <string name="door_tight">勉强 · 会刮手</string>
+    <string name="door_fail">过不去</string>
+    <string name="door_to_measure">量一下才算</string>
+    <string name="door_threshold">门槛</string>
+    <string name="threshold_unset">没选 · 点这里选</string>
+    <string name="threshold_none">无</string>
+    <string name="threshold_1">1 cm · 需要小斜坡</string>
+    <string name="threshold_2">2 cm · 前轮会卡</string>
+    <string name="threshold_3">3 cm+ · 前轮会卡</string>
+    <string name="threshold_short_none">无</string>
+    <string name="threshold_short_1">1 cm</string>
+    <string name="threshold_short_2">2 cm</string>
+    <string name="threshold_short_3">3+</string>
+    <string name="measured_row">我拿卷尺量过</string>
+    <string name="measured_note">门开到 90°，量门扇到门框（ADA：≥ 81.5 cm）</string>
+    <string name="door_title">门 %1$d</string>
+    <string name="door_measured">实量</string>
+    <string name="door_not_measured">未实测</string>
+
+    <string name="lower_by">再低 %1$s ↓</string>
+    <string name="higher_by">高一点 ↑ %1$s</string>
+    <string name="at_height">就是这个高度 ✓</string>
+    <string name="eye_label_seat">坐轮椅的眼睛在这儿</string>
+    <string name="eye_label_child">小孩的眼睛在这儿</string>
+
+    <string name="tag_reach">够不着</string>
+    <string name="tag_see">看不见</string>
+    <string name="tag_hazard">危险</string>
+
+    <string name="hint_scanning">慢慢看一圈房间和地面</string>
+    <string name="hint_hit">撞到了：%1$s</string>
+    <string name="hint_stuck">卡在墙里了？</string>
+    <string name="hint_wait_behind">走到轮椅后面就开始推</string>
+    <string name="hint_saved">已保存：%1$s</string>
+    <string name="hint_pin_mode">点你觉得有问题的地方</string>
+    <string name="hint_lost">定位丢失，站着别动</string>
+    <string name="hint_pins_full">钉子满了，看看报告</string>
+    <string name="hint_scuffs_full">撞痕太多了，看看报告</string>
+    <string name="hint_sit_down">找个凳子坐下</string>
+    <string name="hint_crouch">蹲到小孩那么高</string>
+    <string name="hint_threshold_catch">门槛 %1$s · 前轮会卡</string>
+    <string name="hint_door_blocked">过不去：这道门太窄</string>
+
+    <string name="coach">往前走，轮椅跟着你。撞到哪儿，哪儿变红。</string>
+
+    <string name="dialog_clear">清除全部撞痕和钉子？转一圈的记录也会清掉。自己量过的门宽会留着。</string>
+    <string name="dialog_unavailable">现在用不了：需要在全空间里运行，并允许识别房间。请从应用列表重新打开。</string>
+
+    <string name="menu_chair">轮椅</string>
+    <string name="menu_language">语言</string>
+    <string name="menu_units">单位</string>
+    <string name="menu_clear">清除撞痕和钉子</string>
+    <string name="lang_system">跟随系统</string>
+    <string name="lang_zh">中文</string>
+    <string name="lang_en">English</string>
+    <string name="unit_cm">cm</string>
+    <string name="unit_in">in</string>
+
+    <string name="report_title">体检报告</string>
+    <string name="report_empty">推着轮椅走一圈，问题会出现在这里</string>
+    <string name="report_chair">轮椅</string>
+    <string name="report_turn">转一圈</string>
+    <string name="report_clear">停得下吗</string>
+    <string name="report_clear_note">只说明停得下一台轮椅，不代表能侧向转移（ADA 马桶侧转移需 152.5 × 142 cm）</string>
+    <string name="report_doors">门</string>
+    <string name="report_scuffs">撞痕</string>
+    <string name="report_pins">钉子</string>
+    <string name="report_turn_pass">转得开</string>
+    <string name="report_turn_fail">转不开，靠%2$s那边差 %1$s</string>
+    <string name="report_clear_row">停不下一台轮椅，靠%2$s那边差 %1$s</string>
+    <string name="report_door_row">%1$s %2$s · 门槛 %3$s · %4$s</string>
+    <string name="report_scuff_row">%1$s · 离地 %2$s</string>
+    <string name="report_pin_row">%1$s · %2$s · 离地 %3$s</string>
+    <string name="report_child_mode">（小孩高度）</string>
+    <string name="disclaimer">参考 ADA 2010 尺寸，不代替专业评估或国标验收</string>
+    <string name="report_refs">参考尺寸（ADA 2010）：转身圆 ⌀152.5 cm；门净宽 ≥ 81.5 cm；门槛 ≤ 1.3 cm；侧向伸手 38–122 cm。</string>
+    <string name="report_verdict_pass">过得去</string>
+    <string name="report_verdict_tight">勉强</string>
+    <string name="report_verdict_fail">过不去</string>
+    <string name="report_verdict_measure">待量</string>
+    <string name="report_file_title">无障碍体检 · %1$s</string>
+
+    <string name="loc_door_wall">门 %1$d 进门%2$s墙 · 距门 %3$s</string>
+    <string name="loc_door_thing">%1$s · 距门 %3$d %2$s</string>
+    <string name="loc_start_wall">墙 · 距起点 %1$s</string>
+    <string name="loc_start_thing">%1$s · 距起点 %2$s</string>
+    <string name="hand_left">左手</string>
+    <string name="hand_right">右手</string>
+    <string name="place_middle">房间中间</string>
+
+    <string name="obs_wall">墙</string>
+    <string name="obs_table">桌子</string>
+    <string name="obs_cabinet">柜子</string>
+    <string name="obs_washing_machine">洗衣机</string>
+    <string name="obs_refrigerator">冰箱</string>
+    <string name="obs_bed">床</string>
+    <string name="obs_sofa">沙发</string>
+    <string name="obs_chair">椅子</string>
+    <string name="obs_low">低矮障碍</string>
+    <string name="obs_other">障碍</string>
+
+    <string name="fmt_cm">%1$d cm</string>
+    <string name="fmt_in">%1$s in</string>
+    <string name="fmt_m">%1$s m</string>
+    <string name="fmt_ft">%1$s ft</string>
+    <string name="reach_low">38 cm</string>
+    <string name="reach_high">122 cm</string>
+    <string name="reach_note">无遮挡时</string>
+</resources>
