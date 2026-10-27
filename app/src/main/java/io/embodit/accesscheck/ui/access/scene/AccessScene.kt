@@ -769,7 +769,8 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
         mountBlend = (mountBlend + (if (mount != null) 1f else -1f) * dt / MOUNT_SLIDE_S).coerceIn(0f, 1f)
         var pos = follow.position
         var yaw = follow.yaw
-        if (chairPose != null && state.chairMode != ChairMode.NONE) {
+        // (not for the see-through ghost: the console would bob up and down as it passes under)
+        if (chairPose != null && state.chairMode != ChairMode.NONE && state.chairMode != ChairMode.PLACING) {
             val want = mountRule.liftedY(pos, hh, chairPose, state.chair, state.floorY, head.position) - pos.y
             consoleLift += (want - consoleLift) * (dt / LIFT_EASE_S).coerceIn(0f, 1f)
         } else {
@@ -1084,6 +1085,13 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
         return setDebugPointer(PointerRay(origin, (target - origin).normalized()), null, null)
     }
 
+    override fun aimAhead(aheadM: Float, sideM: Float): String {
+        if (!hasHead) return "AIM ignored: no head"
+        val f = flatForward()
+        val p = V2.of(head.position) + f * aheadM + f.leftPerp() * (-sideM)
+        return aimAt(p.x, p.z)
+    }
+
     override fun setFpsLine(on: Boolean): String {
         fpsOn = on
         frames = 0
@@ -1148,8 +1156,8 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
         /** The console leans back 12 degrees. */
         val CONSOLE_LEAN: Quat4 = Quat4.axisAngle(Vec3.RIGHT, -0.20944f)
 
-        /** Half sizes of the console at 0.75 (0.24 x 0.25 m) with a little air, for the surface rule. */
-        private val CONSOLE_HALF_EXTENTS = listOf(0.13f, 0.13f, 0.01f)
+        /** Half sizes of the console at 0.75 (0.24 x 0.30 m) with a little air, for the surface rule. */
+        private val CONSOLE_HALF_EXTENTS = listOf(0.13f, 0.16f, 0.01f)
 
         /** The dialog: 8 degrees right and 10 degrees down, 1.0 m, clear of the console on the left (D8 / D10). */
         val DIALOG_OFFSET = Vec3(sin(0.1396f) * cos(0.1745f) * PanelSpec.DIALOG_DISTANCE_M, -sin(0.1745f) * PanelSpec.DIALOG_DISTANCE_M, -cos(0.1396f) * cos(0.1745f) * PanelSpec.DIALOG_DISTANCE_M)

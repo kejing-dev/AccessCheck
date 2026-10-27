@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# All 30 design states -> .scratch/shots/Sxx.png (tools/qa_shot.sh per state, with the resets each state needs).
+# All 30 design states (+ S31 placing, v0.1.1) -> .scratch/shots/Sxx.png (tools/qa_shot.sh per state, with the resets each state needs).
 set -u
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"; cd "$ROOT"
 export PATH="$PATH:${LOCALAPPDATA}/Android/Sdk/platform-tools"
@@ -41,5 +41,11 @@ want S27 && shoot S27 && cmd obstacles_clear
 want S28 && shoot S28 && cmd obstacles_clear
 want S29 && shoot S29 && cmd clear_now
 want S30 && shoot S30 && cmd clear_now
+# v0.1.1: placing with the pointer (S31) and the extra shots of the build station's UI audit
+want S31 && shoot S31 S31 "aim_ahead 1.8 -0.3" && cmd ray off
+want S31b && shoot S31 S31-sky "ray 0 1.2 0 0 1 -1" && cmd ray off
+want S31c && shoot S31 S31-feet "aim_ahead 0.2 0" && cmd ray off
+want S4m && shoot S4 S4-mounted
+want S6m && shoot S6 S6-behind
 cmd state S3
 echo ALLDONE

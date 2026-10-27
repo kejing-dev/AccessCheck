@@ -82,6 +82,9 @@ object AcProbe {
 
         /** Points the stand-in controller at the floor point (x, z) from beside the head. */
         fun aimAt(x: Float, z: Float): String
+
+        /** Same, at the floor point [aheadM] in front of the head (level) and [sideM] to its right. */
+        fun aimAhead(aheadM: Float, sideM: Float): String
     }
 
     @Volatile var host: Host? = null

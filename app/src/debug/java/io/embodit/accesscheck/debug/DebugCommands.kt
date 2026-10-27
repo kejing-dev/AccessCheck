@@ -43,6 +43,7 @@ import java.util.Locale
  *                               coach_got_it, hint_action)
  * - `ray ox oy oz dx dy dz`      stand-in controller ray (Stage metres), `ray off` gives the controller back
  * - `aim x z`                   stand-in controller beside the head, pointing at the floor point (x, z)
+ * - `aim_ahead m [side]`        same, at the floor point m ahead of the head (level) and side to its right
  * - `trigger 1|0`, `stick x`    stand-in trigger / thumbstick x (-1..1; `stick 0` releases)
  * - `replace`, `bring`, `place_here`, `place_cancel`, `mute`, `recall`
  * - `dump`, `pose`, `bounds`, `planes`, `park_panel`, `fps on|off`
@@ -163,6 +164,7 @@ internal object DebugCommands {
                 val az = num(1, "z")
                 AcLog.i(if (ax != null && az != null) scene?.aimAt(ax, az) ?: NO_SCENE else "CMD aim needs x z")
             }
+            "aim_ahead" -> AcLog.i(scene?.aimAhead(num(0, "m") ?: 1.5f, num(1, "side") ?: 0f) ?: NO_SCENE)
             "trigger" -> AcLog.i(scene?.setDebugPointer(null, num(0, "v") ?: if (word == "on") 1f else 0f, null) ?: NO_SCENE)
             "stick" -> AcLog.i(scene?.setDebugPointer(null, null, num(0, "x") ?: 0f) ?: NO_SCENE)
             "replace" -> host.dispatch(AccessEvent.ReplaceClicked)

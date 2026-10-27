@@ -154,6 +154,7 @@ adb -s <serial> shell "am broadcast -a io.embodit.accesscheck.DEBUG -p io.embodi
 | `state S1` … `state S30` | straight to that designed state (places / parks the chair, injects a wall / cabinet / door / pins as needed) |
 | `state S31` | placing (v0.1.1): the ghost 1.2 m ahead; move it with `aim` / `ray`, put it down with `trigger 1` then `trigger 0` |
 | `aim x z` | stand-in controller 25 cm right of / 45 cm under the eye, pointing at the floor point (x, z) |
+| `aim_ahead m [side]` | the same, at the floor point m ahead of the head (level) and side to its right |
 | `ray ox oy oz dx dy dz`, `ray off` | stand-in controller ray in Stage metres (`ray off` = the real controller) |
 | `trigger 1|0`, `stick x` | stand-in trigger and thumbstick x (-1..1; `stick 0` releases). Trigger-drag: `aim` at the chair, `trigger 1`, `aim` elsewhere, `trigger 0` |
 | `replace`, `bring`, `place_here`, `place_cancel`, `mute`, `recall` | the new console keys |
