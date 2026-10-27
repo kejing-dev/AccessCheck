@@ -73,6 +73,15 @@ object AcProbe {
 
         /** Moves the parked chair as a drag would (debug `drag`). */
         fun debugDrag(x: Float, z: Float): String
+
+        /** Stands in for the controller: its ray, trigger (0..1) and thumbstick x; null leaves a value as it is. */
+        fun setDebugPointer(ray: io.embodit.accesscheck.domain.model.PointerRay?, trigger: Float?, stickX: Float?): String
+
+        /** Gives the controller back. */
+        fun clearDebugPointer(): String
+
+        /** Points the stand-in controller at the floor point (x, z) from beside the head. */
+        fun aimAt(x: Float, z: Float): String
     }
 
     @Volatile var host: Host? = null

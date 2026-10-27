@@ -22,8 +22,11 @@ enum class Phase { STARTING, SCANNING, READY, BLOCKED }
 
 enum class BlockReason { NOT_IN_FULL_SPACE, WITHOUT_PERMISSION, DEVICE_NOT_SUPPORTED }
 
-/** The chair layer (design `informationArchitecture.layers.chair`). */
-enum class ChairMode { NONE, WAITING_BEHIND, PUSHING, PARKED, DRAGGING, TURNING }
+/**
+ * The chair layer (design `informationArchitecture.layers.chair`). PLACING (v0.1.1, S31): a see-through
+ * ghost follows the pointer's floor point until the trigger / a pinch / the console button puts it down.
+ */
+enum class ChairMode { NONE, PLACING, WAITING_BEHIND, PUSHING, PARKED, DRAGGING, TURNING }
 
 /** The tool layer. */
 enum class Tool { NONE, PIN }
@@ -51,6 +54,10 @@ enum class HintKind(val durationMs: Long) {
     THRESHOLD_CATCH(3000L),
     DOOR_BLOCKED(3000L),
     STICK_HINT(3000L),
+    /** Placing while the pointer misses the floor (aimed up, or farther than 6 m). */
+    AIM_FLOOR(HINT_STICKY_MS),
+    /** No floor found in 5 s: going on with a virtual one (taste profile D7). */
+    VIRTUAL_FLOOR(5000L),
 }
 
 data class HintUi(val id: Int, val kind: HintKind, val obstacle: ObstacleName? = null, val text: String = "")
@@ -89,6 +96,8 @@ data class AccessUiState(
     val phase: Phase = Phase.STARTING,
     val blockReason: BlockReason? = null,
     val hasFloor: Boolean = false,
+    /** The floor is a stand-in at a standard height: none was found (taste profile D7). */
+    val virtualFloor: Boolean = false,
     val floorY: Float = 0f,
     val planeCount: Int = 0,
     // chair layer
@@ -129,6 +138,10 @@ data class AccessUiState(
     val language: LanguagePref = LanguagePref.SYSTEM,
     val units: UnitPref = UnitPref.CM,
     val savedPath: String? = null,
+    /** Feedback sounds off (taste profile D15). */
+    val muted: Boolean = false,
+    /** Bumped by "bring the panel back": the scene parks the console in front of the head again (D9). */
+    val recallSerial: Int = 0,
     val stateName: String = "S1",
 ) {
     val menuOpen: Boolean
@@ -185,6 +198,15 @@ sealed interface AccessEvent {
 
     data class DragEnded(val pose: ChairPose) : AccessEvent
 
+    /** Placing: the trigger put the ghost down at [pose]. */
+    data class PlaceConfirmed(val pose: ChairPose) : AccessEvent
+
+    /** Placing: the pointer reached the floor again ([onFloor]) or lost it. */
+    data class AimChanged(val onFloor: Boolean) : AccessEvent
+
+    /** A system tap (pinch, emulator click) landed on the chair or its ghost. */
+    data object ChairTapped : AccessEvent
+
     data class Bumped(val obstacleId: String, val name: ObstacleName, val contact: Vec3, val normal: Vec3) : AccessEvent
 
     data class BumpEnded(val obstacleId: String, val contact: Vec3) : AccessEvent
@@ -199,6 +221,22 @@ sealed interface AccessEvent {
 
     // ---- console
     data object PlaceClicked : AccessEvent
+
+    /** Placing: "put it here" on the console (no controller at hand). */
+    data object PlaceHereClicked : AccessEvent
+
+    data object PlaceCancelClicked : AccessEvent
+
+    /** Parked: place the chair again with the pointer. */
+    data object ReplaceClicked : AccessEvent
+
+    /** Parked: the chair comes to 1.2 m in front of the person, facing away (D9 / D14). */
+    data object BringChairClicked : AccessEvent
+
+    data object MuteClicked : AccessEvent
+
+    /** The console (and its hint) come back in front of the head (D9). */
+    data object RecallClicked : AccessEvent
 
     data object PushClicked : AccessEvent
 

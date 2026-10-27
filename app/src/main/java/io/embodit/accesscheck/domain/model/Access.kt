@@ -71,6 +71,21 @@ object AccessRules {
     /** The chair lands this far ahead when placed. */
     const val PLACE_AHEAD_M = 1.2f
 
+    /** Placing and dragging follow the pointer's floor point up to this far from the controller (horizontal). */
+    const val AIM_MAX_M = 6f
+
+    /** Clearance around the person (taste profile D14, large item): the chair's centre stays this far from the head. */
+    const val CLEARANCE_M = 0.8f
+
+    /** The chair turns see-through while the head is within this margin of its footprint (D14). */
+    const val INSIDE_MARGIN_M = 0.15f
+
+    /** A trigger reads as pressed above this (besides the device's own pressed flag). */
+    const val TRIGGER_DOWN = 0.6f
+
+    /** No floor for this long: the app goes on with a virtual floor (taste profile D7). */
+    const val SCAN_TIMEOUT_MS = 5000L
+
     /** Rotate keys turn the parked chair by this. */
     const val ROTATE_STEP_DEG = 15f
 
@@ -78,9 +93,9 @@ object AccessRules {
     const val STICK_RATE_DEG_S = 90f
     const val STICK_DEAD = 0.15f
 
-    /** Snap to the door approach frame within this distance and angle (taste profile D1). */
+    /** Snap to the door approach frame within this distance and angle (taste profile D1; 16, not 15: one rotate key step must still snap). */
     const val SNAP_DIST_M = 0.25f
-    const val SNAP_ANGLE_DEG = 15f
+    const val SNAP_ANGLE_DEG = 16f
     const val SNAP_FRONT_GAP_M = 0.30f
 
     const val TURN_ANIM_MS = 1000L
@@ -147,6 +162,8 @@ data class Settings(
     /** Null = not chosen yet: cm, or in when the system region is en-US. */
     val units: UnitPref? = null,
     val coachSeen: Boolean = false,
+    /** Feedback sounds off (taste profile D15). */
+    val muted: Boolean = false,
 )
 
 /** What kind of thing an obstacle is, for naming it ("by the cabinet"). */

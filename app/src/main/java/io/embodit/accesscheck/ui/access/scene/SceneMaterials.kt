@@ -17,6 +17,11 @@ internal class SceneMaterials(private val shared: SharedResources) {
     val chairRed: Material = unlit(AcColors.Error)
     val chairStale: Material = unlit(AcColors.StaleGrey)
 
+    // placing ghost and the see-through chair around the head (taste profile D1 / D14)
+    val ghostBody: Material = sheer(AcColors.Interaction, 0.40f)
+    val ghostRed: Material = sheer(AcColors.Error, 0.45f)
+    val seeThroughBody: Material = sheer(AcColors.ChairFrame, 0.22f)
+
     // footprint frame and face
     val footWhite: Material = unlit(AcColors.White, twoSided = true)
     val footRed: Material = unlit(AcColors.Error, twoSided = true)

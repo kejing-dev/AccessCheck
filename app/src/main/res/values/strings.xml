@@ -176,4 +176,16 @@
     <string name="reach_low">38 cm</string>
     <string name="reach_high">122 cm</string>
     <string name="reach_note">unobstructed</string>
+    <string name="status_placing">Point at the floor</string>
+    <string name="place_here">Put it here</string>
+    <string name="place_sub">Trigger puts it down · stick turns</string>
+    <string name="place_cancel">Cancel</string>
+    <string name="bring_chair">Bring here</string>
+    <string name="replace_chair">Place again</string>
+    <string name="action_mute">Mute sounds</string>
+    <string name="action_unmute">Turn sounds on</string>
+    <string name="action_recall">Bring the panel back</string>
+    <string name="stick_drag_hint">Stick turns · hold trigger on chair to drag</string>
+    <string name="hint_aim_floor">Point at the floor (within 6 m)</string>
+    <string name="hint_virtual_floor">No floor found: using a standard floor</string>
 </resources>

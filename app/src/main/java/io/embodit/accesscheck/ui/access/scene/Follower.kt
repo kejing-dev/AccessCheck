@@ -22,8 +22,10 @@ data class FollowPose(val position: Vec3, val yaw: Float) {
  * thing rests where it settled; once its centre has been more than 45 degrees off the view direction,
  * or nearer than [nearM] or farther than [farM], for 0.5 s without a break, it slides to the designed
  * pose of that moment in 0.35 s (ease-in-out, time based). It holds still while [hold]. The designed
- * pose is [headOffset] in the head frame (x right, y up, -z ahead), level, turned to the head's heading.
- * The surface rule keeps it out of real surfaces ([halfExtents] along its own axes).
+ * pose is [headOffset] in the head's level frame (x right, y up, -z ahead): turned by the head's heading
+ * only, never by its pitch or roll (v0.1.1, UI sweep: looking down at a threshold dropped the console
+ * under the body), and "off to the side" is measured in the level plane too, so looking up and down
+ * moves nothing. The surface rule keeps it out of real surfaces ([halfExtents] along its own axes).
  */
 internal class Follower(
     private val name: String,
@@ -66,7 +68,7 @@ internal class Follower(
 
     private fun designedFor(head: HeadPose): Pair<Vec3, Float> {
         val yaw = FacePanelUseCase.yawOf(head.forward, restYaw)
-        return (head.position + head.rotation.rotate(headOffset)) to yaw
+        return designed(head.position, yaw, headOffset) to yaw
     }
 
     private fun correction(pos: Vec3, yaw: Float, headPos: Vec3, planes: Collection<PlaneSurface>): Vec3 {
@@ -94,7 +96,7 @@ internal class Follower(
         }
         val to = pose.position - head.position
         val dist = to.length
-        val away = if (dist < 1e-3f) 0f else Math.toDegrees(acos((to / dist).dot(head.forward).coerceIn(-1f, 1f)).toDouble()).toFloat()
+        val away = levelAngleDeg(to, head.forward, restYaw)
         val reason =
             when {
                 away > WINDOW_DEG -> "angle"
@@ -160,6 +162,21 @@ internal class Follower(
     }
 
     companion object {
+        /** Where [offset] (head frame) lands for a head at [head] turned to [yaw]: level, whatever the pitch. */
+        fun designed(head: Vec3, yaw: Float, offset: Vec3): Vec3 = head + Quat4.axisAngle(Vec3.UP, yaw).rotate(offset)
+
+        /**
+         * Degrees between [to] and the view direction [forward], both flattened to the floor plane (the
+         * heading [fallbackYaw] stands in when looking straight up or down).
+         */
+        fun levelAngleDeg(to: Vec3, forward: Vec3, fallbackYaw: Float): Float {
+            val flatTo = Vec3(to.x, 0f, to.z)
+            if (flatTo.length < 1e-3f) return 0f
+            val yaw = FacePanelUseCase.yawOf(forward, fallbackYaw)
+            val ahead = Quat4.axisAngle(Vec3.UP, yaw).rotate(Vec3.AHEAD)
+            return Math.toDegrees(acos(flatTo.normalized().dot(ahead).coerceIn(-1f, 1f)).toDouble()).toFloat()
+        }
+
         private const val NEVER = Long.MIN_VALUE
         private const val WINDOW_DEG = 45f
         private const val OUT_MS = 500L

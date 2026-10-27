@@ -17,6 +17,14 @@ Built by the factory's build station on 2026-10-25 (v0.1.0, debug) and run on em
 Pico_Emulator_6_1_fresh): two clean cold starts (no ANR), 30 design states captured with
 `tools/shoot_all.sh` (see "QA hooks"). Not yet on a headset.
 
+v0.1.1 (2026-10-26, polish after the user's headset feedback "placing the wheelchair is hard, it should
+follow where my controller ray meets the floor"): placing with a ghost on the pointer's floor point,
+trigger / pinch / console to put it down, trigger-drag of the parked chair, "bring here" / "place again",
+0.8 m clearance around the head and a see-through chair around it (taste profile D1 / D14), the
+console beside the push handle while pushing (design v2, QA q1-1) and clear of the chair otherwise, level
+(yaw-only) panel follow 18° down (D9 / D10, UI sweep), hint on top of the console, mute and "bring the panel
+back" keys (D15 / D9), virtual floor after 5 s without one (D7).
+
 ## Structure
 
 ```
@@ -34,7 +42,10 @@ app/src/main/java/io/embodit/accesscheck/
   domain/usecase               PushFollowUseCase (handle follows the hand; JVM tests), ObstacleField (walls with
                                doorways cut out, furniture blocks, 5 cm mesh grid, virtual obstacles; bump / turn /
                                clear-floor / nearest-wall queries), DoorUseCase (doorway from a plane, verdicts),
-                               LocateUseCase (place names), HitSurface / ViewFrame / FacePanel / RestBody  [Ruler]
+                               LocateUseCase (place names), HitSurface / ViewFrame / FacePanel / RestBody  [Ruler],
+                               FloorAimUseCase (ray -> floor point, last good point, clearance, facing away, drag
+                               offset, ray vs chair / panel; v0.1.1), ConsoleMountUseCase (console beside the push
+                               handle, lift clear of the chair; v0.1.1)
   data/SettingsStore           SharedPreferences: chair model, language, units, coach seen
   ui/theme                     AcColors (the only colour literals), AccessCheckTheme (PicoTheme, 16 roles), typography
   ui/access                    AccessViewModel (the whole state machine), AccessUiState / AccessEvent, AccessScreen
@@ -48,7 +59,8 @@ app/src/main/java/io/embodit/accesscheck/
                                PlaneColliders (tap targets + backstop), SceneKit (meshes), SceneMaterials
   ui/access/debug/AcProbe      seams for the debug receiver (no-ops in release)
 app/src/debug/                 DebugCommandReceiver + DebugCommands (the QA hooks)
-app/src/test/                  PushFollowUseCaseTest (forward, backward, sidestep, head turn, arc, behind sector)
+app/src/test/                  PushFollowUseCaseTest (forward, backward, sidestep, head turn, arc, behind sector),
+                               FloorAimUseCaseTest, ConsoleMountUseCaseTest, FollowerTest (yaw-only follow, 10-20° down)
 tools/make_icon.ps1            the 512 icon export + legacy mipmap (System.Drawing)
 ```
 
@@ -75,13 +87,26 @@ dragging, thumbstick) it owns the pose and reports it at 10 Hz; otherwise the Vi
 
 ## Interaction
 
-- Place: the console's big button; the chair lands 1.2 m ahead, facing your way, and pushing starts.
+- Place (v0.1.1, taste profile D1): the console's big button starts placing (S31). A see-through yellow
+  ghost follows the point where the controller ray meets the floor (no controller: the gaze ray; a ray
+  that goes level / up or lands farther than 6 m keeps the ghost on the last good point and shows "point
+  at the floor"). The ghost faces away from you (the pushing direction), the thumbstick adds a turn; its
+  centre stays 0.8 m from your head (D14, pushed out along the line from the head); it turns red where it
+  would bump. The trigger puts it down (a ray resting on a panel moves and confirms nothing); a pinch on
+  the floor puts it where the hand ray met the floor, a pinch elsewhere or "Put it here" on the console
+  where the ghost stands; "Cancel" goes back (to the old spot when placing again). The chair is then parked;
+  pushing is optional ("Push").
+- Move it again (v0.1.1): point at the parked chair and hold the trigger: it slides over the floor under the
+  ray (the grab offset kept, the 0.8 m clearance kept, the thumbstick turns it meanwhile); release puts it
+  down (door snap applies). "Bring here" puts it 1.2 m in front of you facing away; "Place again" goes back
+  to the ghost. Standing inside the chair turns it see-through (22 %) so it never fills the view.
 - Push (handle follows the hand): the head's floor point, 3 cm dead zone, 0.15 s low pass; forward
   travel steers at most 0.9 rad per metre, backing up is straight, head turns move nothing. "Push" from
   stopped only starts when you stand in the chair's tail sector (±60°, 0.2 - 1.0 m from the handle);
   otherwise "stand behind the wheelchair" waits for you. Standing still while pressing a wall for 2 s
   gives the stuck hint with "stop and drag".
-- Stop: drag the chair over the floor (press and drag on it; emulator mouse), turn ±15° with the keys,
+- Stop: drag the chair over the floor (press and drag on it; emulator mouse; the controller trigger drag
+  above takes over when a controller aims), turn ±15° with the keys,
   or turn with the thumbstick (taste rule D1, 90°/s at full deflection). Near a shown door a dashed
   yellow frame marks the approach pose 0.3 m before the door; within 25 cm / 15° the chair snaps to it on
   release.
@@ -98,12 +123,21 @@ dragging, thumbstick) it owns the pose and reports it at 10 Hz; otherwise the Vi
 
 ## Panels (all SpatialUI inside PicoTheme; no Material)
 
-Pooled attachment panels, fixed sizes: `console` 400 x 416 at 0.75 (its glass hugs the rows that
-show), `menu` 320 x 320 and `report` 440 x 560 beside it (all on the lazy follow 18° left, 26° down —
-32° while pushing — 0.6 m, leaning back 12°); `chairPlate` 280 x 96 above the push handle (hidden while
-pushing); `doorPlateA` / `doorPlateB` 300 x 112 and `doorCard` 300 x 320 on the door's centre line 20 cm
-under the top edge; `pinTag` 360 x 72 above a fresh pin; `hint` 480 x 64 on its own lazy follow 15° up,
-1.0 m; `dialog` 440 x 240 1.0 m ahead; `coach` 360 x 96 ahead of the chair. Plates, hint and report use
+Pooled attachment panels, fixed sizes: `console` 400 x 496 at 0.75 (fixed glass, rows anchored at the
+top; v0.1.1 adds the mute / panel-back keys in the title row and the "Bring here / Place again" row),
+`menu` 320 x 320 above it and `report` 440 x 560 beside it. The console family follows lazily 18° left,
+18° down (20° while pushing), 0.6 m, leaning back 12°, in the head's level frame (yaw only, v0.1.1:
+looking down at a threshold no longer drops it under the body). While pushing, waiting behind, or standing
+in the parked chair's tail sector it hangs beside the left push handle instead (design v2, q1-1: outside
+the footprint by 8 cm, level with the handle, top edge at handle + 0.40 m held 0.20 - 0.55 m under the
+eye, facing the head; the right handle when a wall is within 0.25 m on the left; 0.3 s slide), and the
+report opens outwards. On the follow it rises 0.15 m above the chair's box whenever the chair would hold
+or hide it. A pushed / waiting / placing chair takes no taps (the pointer passes through to the console).
+`hint` 480 x 64 sits on top of the console (or of the menu above it) at 0.75: below the view line.
+`chairPlate` 280 x 96 above the push handle (hidden while pushing); `doorPlateA` / `doorPlateB` 300 x 112
+and `doorCard` 300 x 320 on the door's centre line 20 cm under the top edge; `pinTag` 360 x 72 above a
+fresh pin; `dialog` 440 x 240 1.0 m away, 8° right and 10° down in the level frame (clear of the console),
+placed once the head pose is known; `coach` 360 x 96 ahead of the chair. Plates, hint and report use
 an opaque ink root (design: no large glass in the room). Copy: `res/values/strings.xml` (en) and
 `res/values-zh`, read through `rs()` so the in-app language switch works without a restart. Fonts: Noto
 Sans + Noto Sans SC bundled under OFL (the SC font whole, 17 MB, as in Fire Plan).
@@ -118,6 +152,11 @@ adb -s <serial> shell "am broadcast -a io.embodit.accesscheck.DEBUG -p io.embodi
 | command | effect |
 |---|---|
 | `state S1` … `state S30` | straight to that designed state (places / parks the chair, injects a wall / cabinet / door / pins as needed) |
+| `state S31` | placing (v0.1.1): the ghost 1.2 m ahead; move it with `aim` / `ray`, put it down with `trigger 1` then `trigger 0` |
+| `aim x z` | stand-in controller 25 cm right of / 45 cm under the eye, pointing at the floor point (x, z) |
+| `ray ox oy oz dx dy dz`, `ray off` | stand-in controller ray in Stage metres (`ray off` = the real controller) |
+| `trigger 1|0`, `stick x` | stand-in trigger and thumbstick x (-1..1; `stick 0` releases). Trigger-drag: `aim` at the chair, `trigger 1`, `aim` elsewhere, `trigger 0` |
+| `replace`, `bring`, `place_here`, `place_cancel`, `mute`, `recall` | the new console keys |
 | `place [x z yawDeg]` | place the chair ahead of the head, or at a Stage floor point |
 | `place_ahead m [side]` | where `place` / `state Sxx` land the chair from now on (default 1.2 m ahead, 0 sideways). On the emulator room `place_ahead 1.7 -0.3` is free floor in front of the camera after `tools/shoot_all.sh` moved it 1.4 m back; 1.2 m puts the chair under the viewer's nose and on the platform edge |
 | `push`, `park`, `turn`, `rotl`, `rotr` | the console keys |
@@ -140,7 +179,8 @@ Screenshot list for QA (design `states[].qaCapture`): S1 (console disabled, spin
 scanning hint), S3, S4 (`state S4`, then `head` a few times to walk), S5 (`state S5`: a wall is injected
 at the chair's front), S6, S7 (`state S7`), S8, S9 (`state S9`: cabinet injected at the right), S10, S11,
 S12, S13, S14, S15, S16, S17, S18 (seeds sample content), S19 (saves; `adb pull` the file), S20, S21,
-S22, S23, S24, S25, S26 (spin held), S27, S28, S29, S30. `tools/shoot_all.sh` does all of them (relaunch,
+S22, S23, S24, S25, S26 (spin held), S27, S28, S29, S30, S31 (placing ghost; `aim` a few points, one beyond
+6 m / `ray 0 1.5 0 0 1 -1` for "point at the floor", one under your feet for the clearance push). `tools/shoot_all.sh` does all of them (relaunch,
 `place_ahead 1.7 -0.3`, `eye` overrides for S15 / S16, the resets each state needs). In the emulator room the
 pushing states (S4 / S21 / S28) show the chair red: pulled to 0.35 m ahead of the viewer it overlaps the low
 platform (a 0.18 m BED block), which is the room, not a bug. Console screenshots: take two in a row (the
@@ -148,7 +188,8 @@ first often shows the previous frame).
 
 Log tag `AccessCheck`: `STATE Sxx`, `PLANES`, `MESH`, `TAP`, `DRAG`, `PLACE`, `CHAIR mode`, `PUSH`, `BUMP start|end`,
 `SCUFF add`, `TURN`, `CLEARFLOOR`, `DOOR`, `SNAP`, `PIN add`, `VIEW`, `HINT`, `COACH`, `REPORT saved`, `CLEAR`,
-`FOLLOW`, `TRACK`, `CMD`, `DUMP`, `POSE`, `PANEL`, `OBSTACLE`, `FPS`.
+`FOLLOW`, `TRACK`, `CMD`, `DUMP`, `POSE`, `PANEL`, `OBSTACLE`, `FPS`; v0.1.1: `PLACE start|trigger|cancel`, `AIM floor=`,
+`DRAG start|end by=trigger`, `BRING`, `RECALL`, `SOUND muted=`, `FLOOR virtual|real`, `POINTER`.
 
 ## Build
 
@@ -173,8 +214,13 @@ must be empty. Icon: `powershell -ExecutionPolicy Bypass -File tools\make_icon.p
 - Noto Sans SC is bundled whole (17 MB) instead of a subset (no fontTools on the build machine).
 - Door plates face the viewer (auto-facing) rather than the chair's side strictly; they stand on the
   door centre line nudged 3 cm to the chair's side.
-- The console is a fixed 400 x 416 glass with its rows anchored at the top instead of a glass that grows and
-  shrinks with the state (a hugging glass left the rest of the pooled panel black on the emulator).
+- The console is a fixed 400 x 496 glass (v0.1.0: 416) with its rows anchored at the top instead of a glass
+  that grows and shrinks with the state (a hugging glass left the rest of the pooled panel black on the emulator).
+- v0.1.1: placing no longer drops the chair 1.2 m ahead and starts pushing (design `interactions.place`): it is
+  the pointer ghost of taste profile D1 and ends parked. New state S31 (placing). The console sits 18° down
+  (design 26°; 20° while pushing, design 32°) for taste profile D10, and the hint bar on top of the console
+  (design: 15° above the view centre). Virtual floor after 5 s without a FLOOR plane (design: the place button
+  stays disabled), taste profile D7. Mute key (D15).
 
 ## Emulator findings (2026-10-25, emulator-5560)
 

@@ -18,12 +18,18 @@ import kotlin.math.PI
  * The footprint frame (8 mm lines, 3 mm above the floor) and the heading arrow turn red while the chair
  * presses something, together with the frame of the body; a 35 % red face fills the footprint then.
  * A box collider over the whole chair is the drag target (`chair`).
+ *
+ * v0.1.1: while placing the body is a see-through ghost ([Look.GHOST]); while the head is inside the
+ * footprint it turns see-through (taste profile D14, [Look.SEE_THROUGH]) so it never fills the view.
  */
 internal class ChairView(private val root: Entity, private val m: SceneMaterials, private val shared: SharedResources) {
 
     private val group = Entity().named("chair")
     private var body: Entity? = null
     private val frameParts = ArrayList<Entity>()
+
+    /** Every body part with its own (solid) material, for the ghost / see-through looks. */
+    private val bodyParts = ArrayList<Pair<Entity, Material>>()
     private val footParts = ArrayList<Entity>()
     private var footFace: Entity? = null
     private var tap: Entity? = null
@@ -35,6 +41,10 @@ internal class ChairView(private val root: Entity, private val m: SceneMaterials
     private var hit = false
     private var stale = false
     private var shown = false
+    private var look = Look.SOLID
+    private var tappable = true
+
+    enum class Look { SOLID, GHOST, SEE_THROUGH }
 
     val tapEntity: Entity?
         get() = tap
@@ -59,6 +69,7 @@ internal class ChairView(private val root: Entity, private val m: SceneMaterials
         runCatching { body?.destroy(true) }
         frameParts.clear()
         footParts.clear()
+        bodyParts.clear()
         val b = Entity().named("chairBody")
         group.addChild(b)
         body = b
@@ -73,7 +84,7 @@ internal class ChairView(private val root: Entity, private val m: SceneMaterials
             val e = ModelEntity(ub, mat)
             b.addChild(e)
             e.setLocal(position = at, rotation = rot, scale = size)
-            if (frame) frameParts += e
+            if (frame) frameParts += e else bodyParts += e to mat
             return e
         }
         fun wheel(r: Float, thick: Float, at: Vec3) {
@@ -81,6 +92,7 @@ internal class ChairView(private val root: Entity, private val m: SceneMaterials
             val e = ModelEntity(uc, m.chairDark)
             b.addChild(e)
             e.setLocal(position = at + Vec3(-thick / 2f, 0f, 0f), rotation = Quat4.axisAngle(Vec3(0f, 0f, 1f), -(PI / 2).toFloat()), scale = Vec3(r, thick, r))
+            bodyParts += e to m.chairDark
         }
         val seatY = 0.48f
         val seatZ = 0.05f
@@ -114,7 +126,7 @@ internal class ChairView(private val root: Entity, private val m: SceneMaterials
             b.addChild(e)
             val dir = (to - from).normalized()
             val up = Vec3.UP
-            e.setLocal(position = from, rotation = Quat4.fromBasis(dir, up.cross(dir).normalized() * -1f, up), scale = Vec3(from.distanceTo(to), LINE_W, 1f))
+            e.setLocal(position = from, rotation = Quat4.fromBasis(dir, up.cross(dir).normalized(), up), scale = Vec3(from.distanceTo(to), LINE_W, 1f))
             footParts += e
         }
         edge(Vec3(-hw, y, -hl), Vec3(hw, y, -hl))
@@ -134,6 +146,7 @@ internal class ChairView(private val root: Entity, private val m: SceneMaterials
         val t = Entity().named("chairTap")
         t.tapBox(Vec3(w, model.heightM, l), Vec3(0f, model.heightM / 2f, 0f))
         b.addChild(t)
+        t.enabled = tappable
         tap = t
         applyColours()
     }
@@ -155,6 +168,19 @@ internal class ChairView(private val root: Entity, private val m: SceneMaterials
         applyColours()
     }
 
+    /** The drag target takes system taps only when [on] (a pushed chair must not catch taps meant for the console). */
+    fun setTappable(on: Boolean) {
+        if (tappable == on) return
+        tappable = on
+        tap?.enabled = on
+    }
+
+    fun setLook(next: Look) {
+        if (look == next) return
+        look = next
+        applyColours()
+    }
+
     fun setStale(on: Boolean) {
         if (stale == on) return
         stale = on
@@ -162,9 +188,16 @@ internal class ChairView(private val root: Entity, private val m: SceneMaterials
     }
 
     private fun applyColours() {
-        val frame = if (stale) m.chairStale else if (hit) m.chairRed else m.chairFrame
+        val sheer =
+            when (look) {
+                Look.SOLID -> null
+                Look.GHOST -> if (hit) m.ghostRed else m.ghostBody
+                Look.SEE_THROUGH -> m.seeThroughBody
+            }
+        val frame = sheer ?: if (stale) m.chairStale else if (hit) m.chairRed else m.chairFrame
         val foot = if (stale) m.footStale else if (hit) m.footRed else m.footWhite
         frameParts.forEach { it.setMaterial(frame) }
+        bodyParts.forEach { (e, solid) -> e.setMaterial(sheer ?: solid) }
         footParts.forEach { it.setMaterial(foot) }
         footFace?.enabled = hit && !stale
     }

@@ -39,6 +39,11 @@ class ObstacleField {
     var floorY: Float = 0f
         private set
 
+    /** No floor plane was found: the stand-in floor height (taste profile D7); a real floor plane replaces it. */
+    fun useVirtualFloor(y: Float) {
+        floorY = y
+    }
+
     /** Outline of the largest FLOOR plane, floor plan; empty before the floor is known. */
     var floorPolygon: List<V2> = emptyList()
         private set

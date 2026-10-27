@@ -21,6 +21,7 @@ import io.embodit.accesscheck.domain.model.Pin
 import io.embodit.accesscheck.domain.model.PinTag
 import io.embodit.accesscheck.domain.model.Scuff
 import io.embodit.accesscheck.domain.model.Settings
+import io.embodit.accesscheck.domain.model.SurfaceKind
 import io.embodit.accesscheck.domain.model.ThresholdPick
 import io.embodit.accesscheck.domain.model.TurnRecord
 import io.embodit.accesscheck.domain.model.UnitPref
@@ -29,6 +30,7 @@ import io.embodit.accesscheck.domain.model.Vec3
 import io.embodit.accesscheck.domain.model.Verdict
 import io.embodit.accesscheck.domain.model.ViewHeight
 import io.embodit.accesscheck.domain.usecase.DoorUseCase
+import io.embodit.accesscheck.domain.usecase.FloorAimUseCase
 import io.embodit.accesscheck.domain.usecase.LocateUseCase
 import io.embodit.accesscheck.domain.usecase.PushFollowUseCase
 import io.embodit.accesscheck.platform.AcLog
@@ -74,6 +76,7 @@ class AccessViewModel(private val appContext: Context) : ViewModel() {
     private val doorRule = DoorUseCase()
     private val locate = LocateUseCase()
     private val pushRule = PushFollowUseCase()
+    private val aim = FloorAimUseCase()
 
     private val _state = MutableStateFlow(AccessUiState())
     val state: StateFlow<AccessUiState> = _state.asStateFlow()
@@ -96,6 +99,12 @@ class AccessViewModel(private val appContext: Context) : ViewModel() {
     private var pinnedDoorId: String? = null
     private var hintHoldMs: Long? = null
     private var placeAheadM = AccessRules.PLACE_AHEAD_M
+    /** Placing again from a parked chair: where it stood (cancel goes back there); null on the first placing. */
+    private var placingFrom: ChairPose? = null
+    private var aimLost = false
+    private var virtualFloor = false
+    private var scanJob: Job? = null
+    private var recallSerial = 0
     private var placeSideM = 0f
     private var hit = false
     private var hitName: ObstacleName? = null
@@ -157,7 +166,11 @@ class AccessViewModel(private val appContext: Context) : ViewModel() {
             is AccessEvent.PlanesChanged -> {
                 planeCount = event.count
                 hasFloor = event.hasFloor
-                floorY = event.floorY
+                if (hasFloor) {
+                    if (virtualFloor) AcLog.i("FLOOR real y=${fmt(event.floorY)} replaces the virtual one")
+                    virtualFloor = false
+                    floorY = event.floorY
+                }
                 syncDoors()
                 refreshPhase()
                 if (pose != null) reevaluateParked()
@@ -182,6 +195,9 @@ class AccessViewModel(private val appContext: Context) : ViewModel() {
                     onChairMoved(event.pose, settled = true)
                 }
             }
+            is AccessEvent.PlaceConfirmed -> if (chairMode == ChairMode.PLACING) confirmPlace(event.pose, "trigger")
+            is AccessEvent.AimChanged -> onAim(event.onFloor)
+            AccessEvent.ChairTapped -> if (chairMode == ChairMode.PLACING) confirmPlace(null, "pinch")
             is AccessEvent.Bumped -> onBumped(event)
             is AccessEvent.BumpEnded -> onBumpEnded(event)
             is AccessEvent.StuckChanged -> {
@@ -194,6 +210,21 @@ class AccessViewModel(private val appContext: Context) : ViewModel() {
             AccessEvent.NothingTapped -> onNothingTapped()
             // console
             AccessEvent.PlaceClicked -> placeChair()
+            AccessEvent.PlaceHereClicked -> if (chairMode == ChairMode.PLACING) confirmPlace(null, "button")
+            AccessEvent.PlaceCancelClicked -> cancelPlace()
+            AccessEvent.ReplaceClicked -> if (chairMode == ChairMode.PARKED) startPlacing(pose)
+            AccessEvent.BringChairClicked -> bringChair()
+            AccessEvent.MuteClicked -> {
+                settings = settings.copy(muted = !settings.muted)
+                store.save(settings)
+                AcLog.i("SOUND muted=${settings.muted}")
+                publish()
+            }
+            AccessEvent.RecallClicked -> {
+                recallSerial++
+                AcLog.i("RECALL console")
+                publish()
+            }
             AccessEvent.PushClicked -> startPushing()
             AccessEvent.ParkClicked -> park()
             AccessEvent.TurnClicked -> startTurn()
@@ -274,6 +305,7 @@ class AccessViewModel(private val appContext: Context) : ViewModel() {
             }
             AccessEvent.WentBackground -> {
                 if (chairMode == ChairMode.PUSHING) park()
+                if (chairMode == ChairMode.PLACING) cancelPlace()
             }
             AccessEvent.CameForeground -> Unit
             // debug
@@ -329,7 +361,7 @@ class AccessViewModel(private val appContext: Context) : ViewModel() {
             when {
                 blockReason != null -> Phase.BLOCKED
                 !sceneReady -> Phase.STARTING
-                !hasFloor -> Phase.SCANNING
+                !hasFloor && !virtualFloor -> Phase.SCANNING
                 else -> Phase.READY
             }
         if (next == phase) {
@@ -343,7 +375,10 @@ class AccessViewModel(private val appContext: Context) : ViewModel() {
                 card = Card.DIALOG
                 clearHint()
             }
-            Phase.SCANNING -> showHint(HintKind.SCANNING)
+            Phase.SCANNING -> {
+                showHint(HintKind.SCANNING)
+                scheduleVirtualFloor()
+            }
             Phase.READY -> if (hint?.kind == HintKind.SCANNING) clearHint()
             Phase.STARTING -> Unit
         }
@@ -354,12 +389,32 @@ class AccessViewModel(private val appContext: Context) : ViewModel() {
         publish()
     }
 
+    /** Taste profile D7: never stuck in "looking for the floor"; after 5 s a virtual floor under the head will do. */
+    private fun scheduleVirtualFloor() {
+        scanJob?.cancel()
+        scanJob =
+            viewModelScope.launch {
+                delay(AccessRules.SCAN_TIMEOUT_MS)
+                if (phase != Phase.SCANNING || hasFloor) return@launch
+                val eye = head?.y
+                // the Stage origin sits on the floor when the head reads a standing / seated height; else 1.6 m under the eye
+                floorY = if (eye != null && (eye < 0.9f || eye > 2.2f)) eye - 1.6f else 0f
+                field.useVirtualFloor(floorY)
+                virtualFloor = true
+                AcLog.i("FLOOR virtual y=${fmt(floorY)} after ${AccessRules.SCAN_TIMEOUT_MS} ms without a floor plane")
+                refreshPhase()
+                showHint(HintKind.VIRTUAL_FLOOR)
+                publish()
+            }
+    }
+
     private fun setTrackingLost(lost: Boolean) {
         if (lost == trackingLost) return
         trackingLost = lost
         if (lost) {
             showHint(HintKind.LOST)
             if (chairMode == ChairMode.PUSHING) setChairMode(ChairMode.PARKED, quiet = true)
+            if (chairMode == ChairMode.PLACING) cancelPlace()
         } else {
             if (hint?.kind == HintKind.LOST) clearHint()
         }
@@ -410,12 +465,99 @@ class AccessViewModel(private val appContext: Context) : ViewModel() {
 
     private fun chairPlaced(): Boolean = pose != null && chairMode != ChairMode.NONE
 
+    /** "Place wheelchair": the ghost appears ahead and follows the pointer's floor point (taste profile D1). */
     private fun placeChair() {
         if (phase != Phase.READY || chairMode != ChairMode.NONE) return
+        startPlacing(null)
+    }
+
+    /** The pose ahead of the head, facing away from the person (the debug states and "bring it here"). */
+    private fun aheadPose(aheadM: Float = placeAheadM, sideM: Float = placeSideM): ChairPose {
         val h = head ?: Vec3(0f, 1.6f, 0f)
         val flat = V2(headForward.x, headForward.z).let { if (it.length < 0.1f) V2(0f, -1f) else it.normalized() }
-        val center = V2.of(h) + flat * placeAheadM + flat.leftPerp() * (-placeSideM)
-        placeChairAt(ChairPose(center, V2.yawOf(flat)))
+        val center = V2.of(h) + flat * aheadM + flat.leftPerp() * (-sideM)
+        return ChairPose(center, V2.yawOf(flat))
+    }
+
+    /** The v0.1.0 placing (ahead of the head, then pushing): the debug states build on it. */
+    private fun placeAheadNow() {
+        if (phase != Phase.READY || chairMode != ChairMode.NONE) return
+        placeChairAt(aheadPose())
+    }
+
+    private fun startPlacing(from: ChairPose?) {
+        if (phase != Phase.READY || trackingLost) return
+        placingFrom = from
+        tool = Tool.NONE
+        closeCardQuiet()
+        turn = null
+        clearFloor = null
+        aimLost = false
+        if (hint?.kind == HintKind.PIN_MODE || hint?.kind == HintKind.WAIT_BEHIND) clearHint()
+        // the ghost starts where the chair stood, or ahead; the scene moves it to the pointer from the next frame
+        pose = from ?: aheadPose(AccessRules.PLACE_AHEAD_M, 0f)
+        poseSerial++
+        AcLog.i("PLACE start from=${if (from != null) "parked" else "none"}")
+        setChairMode(ChairMode.PLACING)
+    }
+
+    /** Puts the ghost down at [at] (the scene's pose at the trigger) or where it was last reported. */
+    private fun confirmPlace(at: ChairPose?, how: String) {
+        val p = at ?: pose ?: return
+        val first = placingFrom == null
+        placingFrom = null
+        pose = p
+        poseSerial++
+        if (first) {
+            placedAt = p.center
+            coachStart = foot
+            if (!settings.coachSeen) coach = true
+        }
+        turn = null
+        if (hint?.kind == HintKind.AIM_FLOOR) clearHint()
+        aimLost = false
+        sound(SoundKind.PLACE)
+        AcLog.i("PLACE chair=${settings.chair.tag} by=$how at=(${fmt(p.center.x)}, ${fmt(p.center.z)}) yaw=${fmt(Math.toDegrees(p.theta.toDouble()).toFloat(), 1)}")
+        setChairMode(ChairMode.PARKED, quiet = true)
+        onChairMoved(p, settled = true)
+    }
+
+    private fun cancelPlace() {
+        if (chairMode != ChairMode.PLACING) return
+        val from = placingFrom
+        placingFrom = null
+        if (hint?.kind == HintKind.AIM_FLOOR) clearHint()
+        aimLost = false
+        AcLog.i("PLACE cancel back=${if (from != null) "parked" else "none"}")
+        if (from != null) {
+            pose = from
+            poseSerial++
+            setChairMode(ChairMode.PARKED, quiet = true)
+            reevaluateParked()
+        } else {
+            pose = null
+            setChairMode(ChairMode.NONE, quiet = true)
+        }
+        publish()
+    }
+
+    private fun onAim(onFloor: Boolean) {
+        if (chairMode != ChairMode.PLACING || aimLost == !onFloor) return
+        aimLost = !onFloor
+        if (aimLost) showHint(HintKind.AIM_FLOOR) else if (hint?.kind == HintKind.AIM_FLOOR) clearHint()
+        publish()
+    }
+
+    /** "Bring it here": 1.2 m ahead of the head, facing away (taste profile D9 / D14; no walking needed, B17). */
+    private fun bringChair() {
+        if (chairMode != ChairMode.PARKED || trackingLost) return
+        val p = aheadPose(AccessRules.PLACE_AHEAD_M, 0f)
+        pose = p
+        poseSerial++
+        turn = null
+        sound(SoundKind.CLICK)
+        AcLog.i("BRING chair to=(${fmt(p.center.x)}, ${fmt(p.center.z)})")
+        onChairMoved(p, settled = true)
     }
 
     private fun placeChairAt(p: ChairPose) {
@@ -587,8 +729,9 @@ class AccessViewModel(private val appContext: Context) : ViewModel() {
         hit = true
         hitName = e.name
         val now = SystemClock.elapsedRealtime()
-        val last = lastHitHintMs[e.name] ?: NEVER
-        if (now - last >= AccessRules.HIT_HINT_REPEAT_MS) {
+        // (v0.1.0 compared against Long.MIN_VALUE: the subtraction overflowed and the hint never showed)
+        val last = lastHitHintMs[e.name]
+        if (last == null || now - last >= AccessRules.HIT_HINT_REPEAT_MS) {
             lastHitHintMs[e.name] = now
             showHint(HintKind.HIT, e.name)
             sound(SoundKind.BUMP)
@@ -760,6 +903,20 @@ class AccessViewModel(private val appContext: Context) : ViewModel() {
     }
 
     private fun onSurfaceTapped(e: AccessEvent.SurfaceTapped) {
+        if (chairMode == ChairMode.PLACING) {
+            // a pinch on the floor puts the chair where the hand ray met it (clear of the person, facing away,
+            // keeping the thumbstick turn); a pinch anywhere else puts it where the ghost stands
+            val plane = planeTracker.get(e.planeId)
+            val f = foot
+            val p = pose
+            if (plane?.kind == SurfaceKind.FLOOR && f != null && p != null) {
+                val turn = p.theta - aim.awayYaw(p.center, f, p.theta)
+                confirmPlace(aim.ghost(V2.of(e.point), f, V2(headForward.x, headForward.z), turn), "pinch_floor")
+            } else {
+                confirmPlace(null, "pinch")
+            }
+            return
+        }
         if (card == Card.MENU || card == Card.DIALOG || card == Card.DOOR || card == Card.PIN_TAG) {
             closeCard()
             return
@@ -832,6 +989,10 @@ class AccessViewModel(private val appContext: Context) : ViewModel() {
 
     /** Tap on empty space: closes the card, leaves the pin tool (design `informationArchitecture.deselect`). */
     private fun onNothingTapped() {
+        if (chairMode == ChairMode.PLACING && card == Card.NONE) {
+            confirmPlace(null, "pinch")
+            return
+        }
         if (card != Card.NONE && dialog != DialogKind.UNAVAILABLE) {
             closeCard()
             return
@@ -939,6 +1100,7 @@ class AccessViewModel(private val appContext: Context) : ViewModel() {
                 phase = phase,
                 blockReason = blockReason,
                 hasFloor = hasFloor,
+                virtualFloor = virtualFloor,
                 floorY = floorY,
                 planeCount = planeCount,
                 chair = settings.chair,
@@ -962,7 +1124,7 @@ class AccessViewModel(private val appContext: Context) : ViewModel() {
                 pins = pins.toList(),
                 turnRecords = turnRecords.toList(),
                 clearRecords = clearRecords.toList(),
-                snapTarget = if (chairMode == ChairMode.PARKED || chairMode == ChairMode.DRAGGING) snapTarget() else null,
+                snapTarget = if (chairMode == ChairMode.PARKED || chairMode == ChairMode.DRAGGING || chairMode == ChairMode.PLACING) snapTarget() else null,
                 view = view,
                 height = height,
                 hint = hint,
@@ -971,6 +1133,8 @@ class AccessViewModel(private val appContext: Context) : ViewModel() {
                 language = settings.language,
                 units = units(),
                 savedPath = savedPath,
+                muted = settings.muted,
+                recallSerial = recallSerial,
                 stateName = name,
             )
         _state.value = next
@@ -995,6 +1159,7 @@ class AccessViewModel(private val appContext: Context) : ViewModel() {
         if (hint?.kind == HintKind.PINS_FULL) return "S29"
         if (hint?.kind == HintKind.SCUFFS_FULL) return "S30"
         if (coach && chairMode == ChairMode.PUSHING) return "S21"
+        if (chairMode == ChairMode.PLACING) return "S31"
         if (height != null) return if (height!!.ok) "S16" else "S15"
         val doorShown = doorsUi().filter { it.slot >= 0 }.minByOrNull { it.slot }
         if (doorShown != null && chairMode != ChairMode.TURNING) {
@@ -1007,6 +1172,7 @@ class AccessViewModel(private val appContext: Context) : ViewModel() {
         }
         return when (chairMode) {
             ChairMode.NONE -> "S3"
+            ChairMode.PLACING -> "S31"
             ChairMode.WAITING_BEHIND -> "S25"
             ChairMode.PUSHING -> if (stuck) "S28" else if (hit) "S5" else "S4"
             ChairMode.DRAGGING -> "S7"
@@ -1024,7 +1190,9 @@ class AccessViewModel(private val appContext: Context) : ViewModel() {
         _effects.tryEmit(e)
     }
 
-    private fun sound(kind: SoundKind) = emit(AccessUiEffect.Sound(kind))
+    private fun sound(kind: SoundKind) {
+        if (!settings.muted) emit(AccessUiEffect.Sound(kind))
+    }
 
     private fun fmtCm(cm: Int): String = "$cm cm"
 
@@ -1095,7 +1263,8 @@ class AccessViewModel(private val appContext: Context) : ViewModel() {
             // a fresh chair at the standard spot (a chair pushed about by an earlier state would frame badly)
             chairMode = ChairMode.NONE
             pose = null
-            placeChair()
+            placingFrom = null
+            placeAheadNow()
         }
         fun ensureParked() {
             ensureChair()
@@ -1301,6 +1470,15 @@ class AccessViewModel(private val appContext: Context) : ViewModel() {
                 clearOverlays()
                 ensureParked()
                 debugPinFill(AccessRules.PIN_MAX)
+                return
+            }
+            "S31" -> {
+                // placing: the ghost, 1.2 m ahead until the pointer moves it (`ray` / `trigger` debug hooks)
+                clearOverlays()
+                chairMode = ChairMode.NONE
+                pose = null
+                coach = false
+                startPlacing(null)
                 return
             }
             "S30" -> {

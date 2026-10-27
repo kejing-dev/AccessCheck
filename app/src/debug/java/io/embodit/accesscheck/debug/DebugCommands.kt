@@ -4,8 +4,10 @@ import android.content.Context
 import io.embodit.accesscheck.domain.model.ChairModel
 import io.embodit.accesscheck.domain.model.LanguagePref
 import io.embodit.accesscheck.domain.model.PinTag
+import io.embodit.accesscheck.domain.model.PointerRay
 import io.embodit.accesscheck.domain.model.ThresholdPick
 import io.embodit.accesscheck.domain.model.UnitPref
+import io.embodit.accesscheck.domain.model.Vec3
 import io.embodit.accesscheck.domain.model.ViewHeight
 import io.embodit.accesscheck.platform.AcLog
 import io.embodit.accesscheck.ui.access.AccessEvent
@@ -18,7 +20,7 @@ import java.util.Locale
  * The QA hooks (debug builds only). Broadcast `io.embodit.accesscheck.DEBUG` with `--es cmd <name ...>`;
  * numbers may also come as `--ef x 1.2 --ef z -0.4 ...` extras (design `qaHooks`).
  *
- * - `state Sxx`                 straight to a designed state (S1 - S30)
+ * - `state Sxx`                 straight to a designed state (S1 - S30; S31 = placing with the ghost)
  * - `place [x z yawDeg]`        place the chair (ahead of the head, or at a Stage point)
  * - `place_ahead m [side]`      where `place` / `state` land the chair from now on (default 1.2 m ahead, 0 sideways)
  * - `push` / `park` / `turn` / `rotl` / `rotr`
@@ -39,6 +41,10 @@ import java.util.Locale
  *                               measure_confirm, pin_tag_reach|see|hazard, pin_delete, report_save, report_delete,
  *                               menu_clear, menu_exit, chair_manual|power, lang_*, unit_cm|in, dialog_cancel|confirm|exit,
  *                               coach_got_it, hint_action)
+ * - `ray ox oy oz dx dy dz`      stand-in controller ray (Stage metres), `ray off` gives the controller back
+ * - `aim x z`                   stand-in controller beside the head, pointing at the floor point (x, z)
+ * - `trigger 1|0`, `stick x`    stand-in trigger / thumbstick x (-1..1; `stick 0` releases)
+ * - `replace`, `bring`, `place_here`, `place_cancel`, `mute`, `recall`
  * - `dump`, `pose`, `bounds`, `planes`, `park_panel`, `fps on|off`
  */
 internal object DebugCommands {
@@ -146,6 +152,25 @@ internal object DebugCommands {
             }
             "planes" -> scene?.planesSummary()?.forEach { AcLog.i(it) } ?: AcLog.i(NO_SCENE)
             "park_panel" -> AcLog.i(scene?.parkPanel() ?: NO_SCENE)
+            "ray" -> {
+                if (word == "off") return AcLog.i(scene?.clearDebugPointer() ?: NO_SCENE)
+                if (numbers.size < 6) return AcLog.i("CMD ray needs ox oy oz dx dy dz")
+                val ray = PointerRay(Vec3(numbers[0], numbers[1], numbers[2]), Vec3(numbers[3], numbers[4], numbers[5]))
+                AcLog.i(scene?.setDebugPointer(ray, null, null) ?: NO_SCENE)
+            }
+            "aim" -> {
+                val ax = num(0, "x")
+                val az = num(1, "z")
+                AcLog.i(if (ax != null && az != null) scene?.aimAt(ax, az) ?: NO_SCENE else "CMD aim needs x z")
+            }
+            "trigger" -> AcLog.i(scene?.setDebugPointer(null, num(0, "v") ?: if (word == "on") 1f else 0f, null) ?: NO_SCENE)
+            "stick" -> AcLog.i(scene?.setDebugPointer(null, null, num(0, "x") ?: 0f) ?: NO_SCENE)
+            "replace" -> host.dispatch(AccessEvent.ReplaceClicked)
+            "bring" -> host.dispatch(AccessEvent.BringChairClicked)
+            "place_here" -> host.dispatch(AccessEvent.PlaceHereClicked)
+            "place_cancel" -> host.dispatch(AccessEvent.PlaceCancelClicked)
+            "mute" -> host.dispatch(AccessEvent.MuteClicked)
+            "recall" -> host.dispatch(AccessEvent.RecallClicked)
             "fps" -> AcLog.i(scene?.setFpsLine(word == "on") ?: NO_SCENE)
             else -> AcLog.i("CMD unknown '$name'")
         }

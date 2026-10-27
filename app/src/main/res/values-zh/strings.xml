@@ -160,4 +160,16 @@
     <string name="reach_low">38 cm</string>
     <string name="reach_high">122 cm</string>
     <string name="reach_note">无遮挡时</string>
+    <string name="status_placing">指向地面放轮椅</string>
+    <string name="place_here">放在这里</string>
+    <string name="place_sub">扳机放下 · 摇杆左右转动</string>
+    <string name="place_cancel">取消</string>
+    <string name="bring_chair">移到面前</string>
+    <string name="replace_chair">重新摆放</string>
+    <string name="action_mute">静音</string>
+    <string name="action_unmute">打开声音</string>
+    <string name="action_recall">面板回到面前</string>
+    <string name="stick_drag_hint">摇杆左右转动 · 扳机按住轮椅可拖动</string>
+    <string name="hint_aim_floor">请指向地面（6 米内）</string>
+    <string name="hint_virtual_floor">没扫到地面，先用标准地面</string>
 </resources>

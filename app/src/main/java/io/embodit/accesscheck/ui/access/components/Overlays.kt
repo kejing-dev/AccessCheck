@@ -107,6 +107,8 @@ private fun hintText(h: HintUi, state: AccessUiState): String =
         HintKind.THRESHOLD_CATCH -> rs(R.string.hint_threshold_catch, h.text)
         HintKind.DOOR_BLOCKED -> rs(R.string.hint_door_blocked)
         HintKind.STICK_HINT -> rs(R.string.stick_hint)
+        HintKind.AIM_FLOOR -> rs(R.string.hint_aim_floor)
+        HintKind.VIRTUAL_FLOOR -> rs(R.string.hint_virtual_floor)
     }
 
 /**
@@ -140,6 +142,8 @@ internal fun HintPanel(state: AccessUiState, filled: Boolean, onEvent: (AccessEv
                         HintKind.WAIT_BEHIND -> R.drawable.ic_push to white
                         HintKind.SIT_DOWN -> R.drawable.ic_seat to white
                         HintKind.CROUCH -> R.drawable.ic_child to white
+                        HintKind.AIM_FLOOR -> R.drawable.ic_target to PicoTheme.colorScheme.alert
+                        HintKind.VIRTUAL_FLOOR -> R.drawable.ic_warning to white
                         else -> R.drawable.ic_check to white
                     }
                 Icon(painter = painterResource(icon), contentDescription = null, modifier = Modifier.size(24.dp), tint = tint)

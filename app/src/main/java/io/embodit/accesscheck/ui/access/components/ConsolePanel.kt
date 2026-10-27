@@ -49,8 +49,10 @@ import io.embodit.accesscheck.ui.theme.AcColors
 /**
  * The console (design `panels.console`): the only standing panel, 400 dp wide at 0.75, lazy-following at
  * the lower left. Its rows come and go with the chair layer: no chair = place + height + pin / report;
- * pushing = status + stop + report; parked = push + turn / rotate + height (+ readout) + pin / report.
- * The top edge is anchored and the big button stays on the second row.
+ * pushing = status + stop + report; parked = push + turn / rotate + bring here / place again + height (+ readout)
+ * + pin / report; placing (v0.1.1) = put it here + cancel. The title row always carries the mute switch and
+ * "bring the panel back" (taste profile D15 / D9). The top edge is anchored and the big button stays on the
+ * second row.
  */
 @Composable
 internal fun ConsolePanel(state: AccessUiState, filled: Boolean, onEvent: (AccessEvent) -> Unit) {
@@ -64,7 +66,14 @@ internal fun ConsolePanel(state: AccessUiState, filled: Boolean, onEvent: (Acces
             modifier = Modifier.size(w.dp, h.dp).clip(RoundedCornerShape(32.dp)).backgroundMaterial(enable = true, style = Material.Regular).padding(PanelPadding),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            TitleRow(statusText(state), trailing = { Key("console_more", R.drawable.ic_more, rs(R.string.action_more), enabled = state.phase != Phase.BLOCKED) { onEvent(AccessEvent.MoreClicked) } })
+            TitleRow(
+                statusText(state),
+                trailing = {
+                    Key("console_mute", if (state.muted) R.drawable.ic_mute else R.drawable.ic_sound, rs(if (state.muted) R.string.action_unmute else R.string.action_mute)) { onEvent(AccessEvent.MuteClicked) }
+                    Key("console_recall", R.drawable.ic_recall, rs(R.string.action_recall)) { onEvent(AccessEvent.RecallClicked) }
+                    Key("console_more", R.drawable.ic_more, rs(R.string.action_more), enabled = state.phase != Phase.BLOCKED) { onEvent(AccessEvent.MoreClicked) }
+                },
+            )
             when (state.chairMode) {
                 ChairMode.NONE ->
                     BigAction(
@@ -72,11 +81,22 @@ internal fun ConsolePanel(state: AccessUiState, filled: Boolean, onEvent: (Acces
                         iconRes = R.drawable.ic_wheelchair,
                         text = rs(R.string.place_chair),
                         sub = rs(if (state.chair == ChairModel.MANUAL) R.string.chair_manual else R.string.chair_power),
-                        enabled = ready && state.hasFloor,
+                        enabled = ready && (state.hasFloor || state.virtualFloor),
                         busy = state.phase == Phase.STARTING || state.phase == Phase.SCANNING,
                         container = PicoTheme.colorScheme.fillPrimary,
                         content = PicoTheme.colorScheme.labelPrimary,
                     ) { onEvent(AccessEvent.PlaceClicked) }
+                ChairMode.PLACING ->
+                    BigAction(
+                        name = "console_place_here",
+                        iconRes = R.drawable.ic_target,
+                        text = rs(R.string.place_here),
+                        sub = rs(R.string.place_sub),
+                        enabled = ready,
+                        busy = false,
+                        container = PicoTheme.colorScheme.interaction,
+                        content = AcColors.Ink,
+                    ) { onEvent(AccessEvent.PlaceHereClicked) }
                 ChairMode.PUSHING, ChairMode.WAITING_BEHIND, ChairMode.DRAGGING ->
                     BigAction(
                         name = "console_park",
@@ -106,9 +126,18 @@ internal fun ConsolePanel(state: AccessUiState, filled: Boolean, onEvent: (Acces
                     RotateKey("console_rot_left", R.drawable.ic_rot_left, rs(R.string.rot_left), ready) { onEvent(AccessEvent.RotateClicked(-1)) }
                     RotateKey("console_rot_right", R.drawable.ic_rot_right, rs(R.string.rot_right), ready) { onEvent(AccessEvent.RotateClicked(1)) }
                 }
-                Text(text = rs(R.string.stick_hint), color = PicoTheme.colorScheme.labelSecondary, style = PicoTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 4.dp))
+                // the parked chair can always be fetched or placed again from here, wherever the person stands (D14, B17)
+                Row(modifier = Modifier.fillMaxWidth().height(56.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    WordButton("console_bring", rs(R.string.bring_chair), { onEvent(AccessEvent.BringChairClicked) }, modifier = Modifier.weight(1f).fillMaxHeight(), enabled = ready, iconRes = R.drawable.ic_bring)
+                    WordButton("console_replace", rs(R.string.replace_chair), { onEvent(AccessEvent.ReplaceClicked) }, modifier = Modifier.weight(1f).fillMaxHeight(), enabled = ready, iconRes = R.drawable.ic_target)
+                }
+                if (state.height == null || state.view == ViewHeight.STAND) {
+                    Text(text = rs(R.string.stick_drag_hint), color = PicoTheme.colorScheme.labelSecondary, style = PicoTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 4.dp))
+                }
             }
-            if (state.chairMode != ChairMode.PUSHING && state.chairMode != ChairMode.WAITING_BEHIND && state.chairMode != ChairMode.DRAGGING) {
+            if (state.chairMode == ChairMode.PLACING) {
+                WordButton("console_place_cancel", rs(R.string.place_cancel), { onEvent(AccessEvent.PlaceCancelClicked) }, modifier = Modifier.fillMaxWidth().height(56.dp), enabled = true, iconRes = R.drawable.ic_close)
+            } else if (state.chairMode != ChairMode.PUSHING && state.chairMode != ChairMode.WAITING_BEHIND && state.chairMode != ChairMode.DRAGGING) {
                 HeightSegments(state, ready) { onEvent(AccessEvent.HeightSelected(it)) }
                 val hu = state.height
                 if (hu != null && state.view != ViewHeight.STAND) HeightReadout(state)
@@ -132,6 +161,7 @@ private fun statusText(state: AccessUiState): String =
         state.trackingLost -> rs(R.string.status_lost)
         state.tool == Tool.PIN -> rs(R.string.status_pin)
         state.chairMode == ChairMode.NONE -> rs(R.string.status_no_chair)
+        state.chairMode == ChairMode.PLACING -> rs(R.string.status_placing)
         state.chairMode == ChairMode.PUSHING -> rs(R.string.status_pushing)
         state.chairMode == ChairMode.WAITING_BEHIND -> rs(R.string.status_waiting_behind)
         state.chairMode == ChairMode.TURNING -> rs(R.string.status_turning)

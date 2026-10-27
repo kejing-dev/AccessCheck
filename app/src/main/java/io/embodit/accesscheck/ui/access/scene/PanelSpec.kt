@@ -15,7 +15,7 @@ object PanelSpec {
     const val COACH = "coach"
 
     /** Width / height in dp (the console's height is its tallest state; its glass hugs the content). */
-    val CONSOLE_SIZE = 400f to 416f
+    val CONSOLE_SIZE = 400f to 496f
     val CHAIR_PLATE_SIZE = 280f to 112f
     val DOOR_PLATE_SIZE = 300f to 112f
     val DOOR_CARD_SIZE = 300f to 320f

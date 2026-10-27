@@ -20,17 +20,22 @@ import com.pico.spatial.ui.geometry.Offset3D
 import io.embodit.accesscheck.domain.model.AccessRules
 import io.embodit.accesscheck.domain.model.ChairPose
 import io.embodit.accesscheck.domain.model.Obb2
+import io.embodit.accesscheck.domain.model.PointerRay
 import io.embodit.accesscheck.domain.model.Quat4
 import io.embodit.accesscheck.domain.model.SurfaceKind
 import io.embodit.accesscheck.domain.model.V2
 import io.embodit.accesscheck.domain.model.Vec3
 import io.embodit.accesscheck.domain.model.Verdict
 import io.embodit.accesscheck.domain.model.ViewHeight
+import io.embodit.accesscheck.domain.usecase.ConsoleMountUseCase
 import io.embodit.accesscheck.domain.usecase.DoorUseCase
+import io.embodit.accesscheck.domain.usecase.FacePanelUseCase
+import io.embodit.accesscheck.domain.usecase.FloorAimUseCase
 import io.embodit.accesscheck.domain.usecase.HitSurfaceUseCase
 import io.embodit.accesscheck.domain.usecase.PushFollowUseCase
 import io.embodit.accesscheck.platform.AcLog
 import io.embodit.accesscheck.platform.AccessGraph
+import io.embodit.accesscheck.platform.input.ControllerSample
 import io.embodit.accesscheck.platform.sense.PlaneTracker
 import io.embodit.accesscheck.platform.tracking.HeadPose
 import io.embodit.accesscheck.ui.access.AccessEvent
@@ -103,7 +108,6 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
     private var attached = false
 
     private val consoleFollower = Follower("console", CONSOLE_OFFSET, CONSOLE_HALF_EXTENTS, CONSOLE_LEAN)
-    private val hintFollower = Follower("hint", HINT_OFFSET, HINT_HALF_EXTENTS, nearM = 0.5f, farM = 1.6f)
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var buildJob: Job? = null
@@ -136,6 +140,23 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
     private var dragging = false
     private var dragPxToM = 0.001f
     private var stickActive = false
+
+    // the pointer: placing ghost and trigger drag (v0.1.1, taste profile D1 / D14)
+    private val aim = FloorAimUseCase()
+    private val aimTracker = FloorAimUseCase.Tracker(aim)
+    private var triggerDown = false
+    private var aimOnFloor = true
+    private var placeYaw = 0f
+    private var ctlDrag = false
+    private var grabOffset = V2.ZERO
+    private var lastRecall = 0
+
+    // the console beside the push handle (design v2, q1-1)
+    private val mountRule = ConsoleMountUseCase()
+    private var mountBlend = 0f
+    private var mountRight = false
+    private var lastMount: Pair<Vec3, Float>? = null
+    private var consoleLift = 0f
     private var activeHits = HashMap<String, V2>()
     private var prevCenter: V2? = null
     private var prevFront: V2? = null
@@ -147,6 +168,9 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
     private var debugFoot: V2? = null
     private var debugYaw: Float? = null
     private var debugEye: Float? = null
+    private var debugRay: PointerRay? = null
+    private var debugTrigger = 0f
+    private var debugStick = 0f
     private var obstaclesShown = false
     private var fpsOn = false
     private var frames = 0
@@ -200,7 +224,6 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
         ActiveScene.scene = this
         bindPanels(attachments)
         consoleFollower.reset()
-        hintFollower.reset()
         buildJob =
             scope.launch {
                 try {
@@ -280,6 +303,9 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
         lastLost = false
         dialogPlaced = false
         push = null
+        ctlDrag = false
+        dragging = false
+        triggerDown = false
         activeHits.clear()
         AcLog.i("SCENE detached")
     }
@@ -291,6 +317,12 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
     fun render(state: AccessUiState, force: Boolean = false) {
         val previous = ui
         ui = state
+        if (state.recallSerial != lastRecall) {
+            lastRecall = state.recallSerial
+            // "bring the panel back" (taste profile D9): in front of the head as it is now
+            if (hasHead) consoleFollower.park(head, planeTracker.all, SystemClock.elapsedRealtime())
+            dialogPlaced = false
+        }
         if (!attached) return
         val chair = chair ?: return
         val marks = marks ?: return
@@ -306,6 +338,8 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
             lastMode = state.chairMode
         }
         chair.setShown(state.pose != null && state.chairMode != ChairMode.NONE)
+        // only a standing chair takes taps and drags: pushing, waiting or placing, the pointer passes through it (q1-1)
+        chair.setTappable(state.chairMode == ChairMode.PARKED || state.chairMode == ChairMode.DRAGGING || state.chairMode == ChairMode.TURNING)
         chair.setStale(state.trackingLost)
         marks.syncScuffs(state.scuffs)
         marks.syncPins(state.pins)
@@ -314,7 +348,7 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
     }
 
     private fun sceneDrives(state: AccessUiState): Boolean =
-        state.chairMode == ChairMode.PUSHING || state.chairMode == ChairMode.DRAGGING || (state.chairMode == ChairMode.PARKED && stickActive)
+        state.chairMode == ChairMode.PUSHING || state.chairMode == ChairMode.DRAGGING || state.chairMode == ChairMode.PLACING || (state.chairMode == ChairMode.PARKED && (stickActive || ctlDrag))
 
     private fun onModeChanged(from: ChairMode, to: ChairMode, state: AccessUiState) {
         AcLog.i("CHAIR mode ${from.name.lowercase(Locale.US)} -> ${to.name.lowercase(Locale.US)}")
@@ -331,7 +365,17 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
                 sink(AccessEvent.StuckChanged(false))
             }
         }
-        if (to != ChairMode.DRAGGING) dragging = false
+        if (to != ChairMode.DRAGGING && to != ChairMode.PARKED) {
+            dragging = false
+            ctlDrag = false
+        }
+        if (to == ChairMode.PLACING) {
+            aimTracker.reset(null)
+            aimOnFloor = true
+            placeYaw = 0f
+            stickActive = false
+            endAllHits(state.floorY)
+        }
         if (to == ChairMode.NONE) {
             activeHits.clear()
             prevCenter = null
@@ -348,15 +392,8 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
         if (state.card != Card.DOOR) rig[PanelSpec.DOOR_CARD]?.hide()
         val plateShown = state.pose != null && (state.chairMode == ChairMode.PARKED || state.chairMode == ChairMode.TURNING || state.chairMode == ChairMode.DRAGGING)
         if (!plateShown) rig[PanelSpec.CHAIR_PLATE]?.hide()
-        val dialog = rig[PanelSpec.DIALOG]
-        if (state.dialog != null) {
-            if (!dialogPlaced) {
-                val ahead = head.forward.let { if (it.length < 0.1f) Vec3.AHEAD else it.normalized() }
-                dialog?.show(head.position + ahead * PanelSpec.DIALOG_DISTANCE_M, PanelSpec.MAIN_SCALE * 1.5f)
-                dialogPlaced = true
-            }
-        } else {
-            dialog?.hide()
+        if (state.dialog == null) {
+            rig[PanelSpec.DIALOG]?.hide()
             dialogPlaced = false
         }
         if (state.hint == null) rig[PanelSpec.HINT]?.hide()
@@ -384,9 +421,9 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
         if (hasHead && head.position.length > 1e-3f) {
             consoleFollower.headOffset = if (state.chairMode == ChairMode.PUSHING) CONSOLE_OFFSET_PUSHING else CONSOLE_OFFSET
             consoleFollower.follow(head, planeTracker.all, planeTracker.count, now, hold)
-            hintFollower.follow(head, planeTracker.all, planeTracker.count, now, hold = false)
         }
-        placeConsoleFamily(state, rig)
+        placeConsoleFamily(state, rig, dt)
+        placeDialog(state, rig)
         countFrame(now)
         if (!attached) return
 
@@ -394,7 +431,7 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
         pollTracking(now)
         pollPlanes(now)
         pollField(now)
-        driveChair(state, now, dt)
+        driveChair(state, now, dt, pollPointer())
         placeWorldPanels(state, rig)
         if (hasHead && now - lastHeadSentMs >= HEAD_SAMPLE_MS) {
             lastHeadSentMs = now
@@ -414,11 +451,50 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
         return HeadPose(pos, rot)
     }
 
+    /** One frame of the controller: its sample (or the debug stand-in) and the trigger's edges. */
+    private class Pointer(val sample: ControllerSample?, val down: Boolean, val pressed: Boolean, val released: Boolean)
+
+    private fun pollPointer(): Pointer {
+        val r = debugRay
+        val sample =
+            if (r != null) ControllerSample(r, debugTrigger, debugTrigger >= AccessRules.TRIGGER_DOWN, debugStick, right = true)
+            else controller.sample()?.let { if (debugStick != 0f) it.copy(stickX = debugStick) else it }
+        val down = sample != null && (sample.pressed || sample.trigger >= AccessRules.TRIGGER_DOWN)
+        val p = Pointer(sample, down, down && !triggerDown, !down && triggerDown)
+        triggerDown = down
+        return p
+    }
+
+    /** The system pointer stand-in when no controller aims: the gaze (head ray), confirmed by a pinch. */
+    private fun gazeRay(): PointerRay? = if (hasHead) PointerRay(head.position, head.forward.normalized()) else null
+
+    private fun flatForward(): V2 = V2(head.forward.x, head.forward.z).let { if (it.length < 0.1f) V2(0f, -1f) else it.normalized() }
+
+    /** True when [ray] meets a shown panel nearer than [beforeM]: pointing at the UI moves and confirms nothing. */
+    private fun rayOnPanel(ray: PointerRay, beforeM: Float): Boolean {
+        val rig = rig ?: return false
+        for (slot in rig.all) {
+            if (!slot.shown || slot.panel == null) continue
+            val (hw, hh) = PanelSpec.halfM(slot.id, slot.scale)
+            val rot = if (slot.autoFace) Quat4.axisAngle(Vec3.UP, slot.facing.yaw) else slot.rotation
+            val t = aim.hitsPanel(ray, slot.position, rot, hw, hh) ?: continue
+            if (t < beforeM) return true
+        }
+        return false
+    }
+
+    /** Closes every open contact (placing starts: the ghost leaves no scuffs). */
+    private fun endAllHits(floorY: Float) {
+        for ((id, last) in activeHits) sink(AccessEvent.BumpEnded(id, Vec3(last.x, floorY + 0.15f, last.z)))
+        activeHits.clear()
+        started.clear()
+    }
+
     /** The floor point under the head (the push input), or null before the first head sample. */
     private fun currentFoot(): V2? = if (hasHead) V2.of(head.position) else null
 
     // ---- the chair: following, dragging, turning with the stick, bumping, doors
-    private fun driveChair(state: AccessUiState, now: Long, dt: Float) {
+    private fun driveChair(state: AccessUiState, now: Long, dt: Float, pointer: Pointer) {
         val chair = chair ?: return
         val marks = marks ?: return
         val pose = livePose
@@ -433,7 +509,34 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
         }
         var next = pose
         var scenePose = false
+        val rate = Math.toRadians(AccessRules.STICK_RATE_DEG_S.toDouble()).toFloat()
+        val headFoot = currentFoot() ?: V2.ZERO
         when (state.chairMode) {
+            ChairMode.PLACING -> {
+                // the ghost follows the pointer's floor point (taste profile D1), clear of the head (D14), facing away
+                val ray = pointer.sample?.ray ?: gazeRay()
+                val floorT = ray?.let { aim.floorDistance(it, state.floorY) } ?: Float.MAX_VALUE
+                val onUi = ray != null && rayOnPanel(ray, floorT)
+                val x = pointer.sample?.stickX ?: 0f
+                if (abs(x) > AccessRules.STICK_DEAD) placeYaw -= x * rate * dt
+                if (ray != null && !onUi && !state.trackingLost) {
+                    val a = aimTracker.update(ray, state.floorY)
+                    if (a.onFloor != aimOnFloor) {
+                        aimOnFloor = a.onFloor
+                        AcLog.i("AIM floor=${a.onFloor}")
+                        sink(AccessEvent.AimChanged(a.onFloor))
+                    }
+                    val at = a.point
+                    next = if (at != null) aim.ghost(at, headFoot, flatForward(), placeYaw) else ChairPose(pose.center, aim.awayYaw(pose.center, headFoot, pose.theta) + placeYaw)
+                } else {
+                    next = ChairPose(pose.center, aim.awayYaw(pose.center, headFoot, pose.theta) + placeYaw)
+                }
+                scenePose = true
+                if (pointer.pressed && !onUi && !state.trackingLost) {
+                    AcLog.i("PLACE trigger at=(${AcLog.f(next.center.x)}, ${AcLog.f(next.center.z)})")
+                    sink(AccessEvent.PlaceConfirmed(next))
+                }
+            }
             ChairMode.PUSHING -> {
                 val foot = currentFoot()
                 val p = push
@@ -446,10 +549,23 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
                 }
             }
             ChairMode.PARKED -> {
-                val sample = controller.sample()
+                val sample = pointer.sample
+                // trigger on the chair: drag it over the floor under the ray (v0.1.1)
+                if (pointer.pressed && sample != null && !ctlDrag && state.card == Card.NONE && state.tool == Tool.NONE && !state.trackingLost) {
+                    val tChair = aim.hitsChair(sample.ray, pose, state.chair, state.floorY)
+                    if (tChair != null && !rayOnPanel(sample.ray, tChair)) {
+                        val f = aim.floorPoint(sample.ray, state.floorY) ?: V2.of(sample.ray.origin + sample.ray.direction * tChair)
+                        grabOffset = pose.center - f
+                        aimTracker.reset(f)
+                        ctlDrag = true
+                        dragging = true
+                        stickActive = false
+                        AcLog.i("DRAG start by=trigger grab=(${AcLog.f(f.x)}, ${AcLog.f(f.z)})")
+                        sink(AccessEvent.DragStarted)
+                    }
+                }
                 val x = sample?.stickX ?: 0f
-                if (state.card == Card.NONE && state.tool == Tool.NONE && abs(x) > AccessRules.STICK_DEAD) {
-                    val rate = Math.toRadians(AccessRules.STICK_RATE_DEG_S.toDouble()).toFloat()
+                if (!ctlDrag && state.card == Card.NONE && state.tool == Tool.NONE && abs(x) > AccessRules.STICK_DEAD) {
                     next = ChairPose(pose.center, pose.theta - x * rate * dt)
                     stickActive = true
                     scenePose = true
@@ -460,6 +576,22 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
             }
             ChairMode.DRAGGING -> scenePose = dragging
             else -> Unit
+        }
+        if (ctlDrag) {
+            val sample = pointer.sample
+            if (pointer.down && sample != null && (state.chairMode == ChairMode.DRAGGING || state.chairMode == ChairMode.PARKED)) {
+                val a = aimTracker.update(sample.ray, state.floorY)
+                var theta = next.theta
+                if (state.chairMode == ChairMode.DRAGGING && abs(sample.stickX) > AccessRules.STICK_DEAD) theta -= sample.stickX * rate * dt
+                val at = a.point
+                next = ChairPose(if (at != null) aim.dragged(at, grabOffset, headFoot, flatForward()) else next.center, theta)
+                scenePose = true
+            } else {
+                ctlDrag = false
+                dragging = false
+                AcLog.i("DRAG end by=trigger at=(${AcLog.f(next.center.x)}, ${AcLog.f(next.center.z)})")
+                sink(AccessEvent.DragEnded(next))
+            }
         }
         livePose = next
         // the drawn pose eases towards the live one (0.3 s transition of the design)
@@ -484,11 +616,24 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
             lastPoseSentMs = now
             sink(AccessEvent.ChairMoved(next, settled = false))
         }
-        // bumps
+        // bumps (the ghost only shows red: it leaves no scuffs)
         val foot = next.footprint(state.chair)
-        val moving = state.chairMode == ChairMode.PUSHING || state.chairMode == ChairMode.DRAGGING || stickActive || state.chairMode == ChairMode.PARKED
-        if (moving && !state.trackingLost) collide(foot, state.floorY, state.chairMode == ChairMode.PUSHING, now)
-        chair.setHit(activeHits.isNotEmpty() && !state.trackingLost)
+        if (state.chairMode == ChairMode.PLACING) {
+            chair.setHit(field.hits(foot).isNotEmpty())
+        } else {
+            val moving = state.chairMode == ChairMode.PUSHING || state.chairMode == ChairMode.DRAGGING || stickActive || state.chairMode == ChairMode.PARKED
+            if (moving && !state.trackingLost) collide(foot, state.floorY, state.chairMode == ChairMode.PUSHING, now)
+            chair.setHit(activeHits.isNotEmpty() && !state.trackingLost)
+        }
+        // ghost while placing; see-through while the head is inside it (taste profile D14)
+        val inside = hasHead && foot.grown(AccessRules.INSIDE_MARGIN_M).contains(V2.of(head.position))
+        chair.setLook(
+            when {
+                state.chairMode == ChairMode.PLACING -> ChairView.Look.GHOST
+                inside -> ChairView.Look.SEE_THROUGH
+                else -> ChairView.Look.SOLID
+            }
+        )
         // doors crossed
         val front = next.center + next.heading * (state.chair.lengthM / 2f)
         val pc = prevCenter
@@ -504,7 +649,8 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
         // standing overlays
         val parkedLike = state.chairMode == ChairMode.PARKED || state.chairMode == ChairMode.DRAGGING || state.chairMode == ChairMode.TURNING
         marks.syncClearFloor(next, parkedLike && state.turn == null, state.clearFloor != null, state.floorY)
-        marks.syncSnap(if (parkedLike) state.snapTarget else null, if (parkedLike) foot else null, state.floorY)
+        val snapLike = parkedLike || state.chairMode == ChairMode.PLACING
+        marks.syncSnap(if (snapLike) state.snapTarget else null, if (snapLike) foot else null, state.floorY)
         if (state.chairMode == ChairMode.PARKED) {
             val wall = field.nearestWall(foot, AccessRules.REACH_WALL_WITHIN_M)
             marks.syncReach(wall?.first?.box, next.center, state.floorY)
@@ -599,25 +745,83 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
     }
 
     // ---- panels
-    private fun placeConsoleFamily(state: AccessUiState, rig: PanelRig) {
+    /**
+     * The console beside the push handle while pushing / waiting / standing behind the parked chair (design
+     * v2, q1-1), else on the lazy follow; 0.3 s between the two. On the follow it rises clear of the chair
+     * when the chair would hold or hide it (design `occlusionRule`).
+     */
+    private fun consolePose(state: AccessUiState, dt: Float): Pair<Vec3, Float> {
+        val (hw, hh) = PanelSpec.halfM(PanelSpec.CONSOLE, PanelSpec.MAIN_SCALE)
+        val chairPose = shownPose ?: livePose
+        val follow = consoleFollower.pose
+        var mount: Pair<Vec3, Float>? = null
+        if (chairPose != null && !state.trackingLost) {
+            val mode = state.chairMode
+            val behind = mode == ChairMode.PUSHING || mode == ChairMode.WAITING_BEHIND || ((mode == ChairMode.PARKED || mode == ChairMode.TURNING) && currentFoot()?.let { pushRule.isBehind(it, chairPose, state.chair) } == true)
+            if (behind) {
+                // the left handle unless a wall stands within 0.25 m there (then the right one)
+                fun walled(right: Boolean) = field.nearestWall(Obb2.square(mountRule.mountSpot(chairPose, state.chair, hw, right), 0.02f), MOUNT_WALL_M) != null
+                if (walled(mountRight) && !walled(!mountRight)) mountRight = !mountRight
+                mount = mountRule.mount(chairPose, state.chair, state.floorY, head.position, hw, hh, mountRight)
+            }
+        }
+        if (mount != null) lastMount = mount
+        mountBlend = (mountBlend + (if (mount != null) 1f else -1f) * dt / MOUNT_SLIDE_S).coerceIn(0f, 1f)
+        var pos = follow.position
+        var yaw = follow.yaw
+        if (chairPose != null && state.chairMode != ChairMode.NONE) {
+            val want = mountRule.liftedY(pos, hh, chairPose, state.chair, state.floorY, head.position) - pos.y
+            consoleLift += (want - consoleLift) * (dt / LIFT_EASE_S).coerceIn(0f, 1f)
+        } else {
+            consoleLift = 0f
+        }
+        pos = Vec3(pos.x, pos.y + consoleLift, pos.z)
+        val m = lastMount
+        if (m != null && mountBlend > 0f) {
+            val t = Ease.inOutCubic(mountBlend)
+            var d = m.second - yaw
+            while (d > PI.toFloat()) d -= 2f * PI.toFloat()
+            while (d < -PI.toFloat()) d += 2f * PI.toFloat()
+            pos = pos.lerp(m.first, t)
+            yaw += d * t
+        }
+        return pos to yaw
+    }
+
+    private fun placeConsoleFamily(state: AccessUiState, rig: PanelRig, dt: Float) {
         if (!hasHead) return
-        val pose = consoleFollower.pose
-        val rot = consoleFollower.rotation
+        val (at, yaw) = consolePose(state, dt)
+        val pose = FollowPose(at, yaw)
+        val rot = Quat4.axisAngle(Vec3.UP, yaw) * CONSOLE_LEAN
         val k = PanelSpec.MAIN_SCALE
         rig[PanelSpec.CONSOLE]?.place(pose.position, rot, k)
         val (hw, hh) = PanelSpec.halfM(PanelSpec.CONSOLE, k)
+        // beside the left handle the report opens outwards (left), never over the chair
+        val reportLeft = mountBlend > 0.5f && !mountRight
         if (state.menuOpen) {
             val (mw, mh) = PanelSpec.halfM(PanelSpec.MENU, k)
             rig[PanelSpec.MENU]?.place(pose.position + rot.rotate(Vec3(hw - mw, hh + 0.012f + mh, 0.012f)), rot, k)
         }
         if (state.reportOpen) {
             val (rw, rh) = PanelSpec.halfM(PanelSpec.REPORT, k)
-            rig[PanelSpec.REPORT]?.place(pose.position + rot.rotate(Vec3(hw + 0.03f + rw, rh - hh, 0.01f)), rot, k)
+            val side = if (reportLeft) -1f else 1f
+            rig[PanelSpec.REPORT]?.place(pose.position + rot.rotate(Vec3(side * (hw + 0.03f + rw), rh - hh, 0.01f)), rot, k)
         }
         if (state.hint != null) {
-            val hp = hintFollower.pose
-            rig[PanelSpec.HINT]?.place(hp.position, hintFollower.rotation, HINT_SCALE)
+            // the hint bar sits on top of the console (or of the menu over it): below the view line, never above (D10)
+            val (_, ih) = PanelSpec.halfM(PanelSpec.HINT, k)
+            var top = hh
+            if (state.menuOpen) top += 0.012f + 2f * PanelSpec.halfM(PanelSpec.MENU, k).second
+            rig[PanelSpec.HINT]?.place(pose.position + rot.rotate(Vec3(0f, top + 0.012f + ih, 0.006f)), rot, k)
         }
+    }
+
+    /** The dialog, once per opening: level heading, 10 degrees down, a little right of the console (D8 / D9). */
+    private fun placeDialog(state: AccessUiState, rig: PanelRig) {
+        if (state.dialog == null || dialogPlaced || !hasHead) return
+        val yaw = FacePanelUseCase.yawOf(head.forward, consoleFollower.pose.yaw)
+        rig[PanelSpec.DIALOG]?.show(Follower.designed(head.position, yaw, DIALOG_OFFSET), PanelSpec.MAIN_SCALE * 1.5f)
+        dialogPlaced = true
     }
 
     private fun placeWorldPanels(state: AccessUiState, rig: PanelRig) {
@@ -763,7 +967,10 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
         }
         val planeId = colliders?.planeIdOf(target)
         when {
-            chair?.isChair(target) == true -> AcLog.i("TAP chair kind=$kind")
+            chair?.isChair(target) == true -> {
+                AcLog.i("TAP chair kind=$kind")
+                sink(AccessEvent.ChairTapped)
+            }
             planeId != null && stage != null -> {
                 val plane = planeTracker.get(planeId)
                 val point = if (plane != null) hits.project(plane, stage) else stage
@@ -787,6 +994,7 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
     fun onSpatialDrag(phase: String, start: Offset3D?, value: SpatialDragValue) {
         when (phase) {
             "start" -> {
+                if (ctlDrag || ui.chairMode == ChairMode.PLACING) return
                 val target = value.targetEntity ?: return
                 if (chair?.isChair(target) != true) return
                 val pose = livePose ?: return
@@ -798,16 +1006,16 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
                 sink(AccessEvent.DragStarted)
             }
             "move" -> {
-                if (!dragging) return
+                if (!dragging || ctlDrag) return
                 val pose = livePose ?: return
                 val a = value.dragAmount
                 val right = V2(head.right.x, head.right.z).let { if (it.length < 0.1f) V2(1f, 0f) else it.normalized() }
                 val fwd = V2(head.forward.x, head.forward.z).let { if (it.length < 0.1f) V2(0f, -1f) else it.normalized() }
                 val move = right * (a.x * dragPxToM) + fwd * (-a.y * dragPxToM)
-                livePose = ChairPose(pose.center + move, pose.theta)
+                livePose = ChairPose(aim.clear(pose.center + move, currentFoot() ?: V2.ZERO, fwd), pose.theta)
             }
             "end", "cancel" -> {
-                if (!dragging) return
+                if (!dragging || ctlDrag) return
                 dragging = false
                 val pose = livePose ?: return
                 AcLog.i("DRAG end at=(${AcLog.f(pose.center.x)}, ${AcLog.f(pose.center.z)})")
@@ -854,6 +1062,28 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
         return "FOLLOW console park requested"
     }
 
+    override fun setDebugPointer(ray: PointerRay?, trigger: Float?, stickX: Float?): String {
+        if (ray != null) debugRay = PointerRay(ray.origin, ray.direction.normalized())
+        if (trigger != null) debugTrigger = trigger
+        if (stickX != null) debugStick = stickX
+        return "POINTER ray=${debugRay?.let { "${AcLog.pos(it.origin)}->${AcLog.pos(it.direction)}" } ?: "real"} trigger=$debugTrigger stick=$debugStick"
+    }
+
+    override fun clearDebugPointer(): String {
+        debugRay = null
+        debugTrigger = 0f
+        debugStick = 0f
+        return "POINTER real"
+    }
+
+    override fun aimAt(x: Float, z: Float): String {
+        if (!hasHead) return "AIM ignored: no head"
+        // a controller held 25 cm right of and 45 cm under the eye, pointing at the floor point (x, z)
+        val origin = head.position + Vec3(head.right.x, 0f, head.right.z).normalized() * 0.25f + Vec3(0f, -0.45f, 0f)
+        val target = Vec3(x, ui.floorY, z)
+        return setDebugPointer(PointerRay(origin, (target - origin).normalized()), null, null)
+    }
+
     override fun setFpsLine(on: Boolean): String {
         fpsOn = on
         frames = 0
@@ -897,16 +1127,23 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
         private const val PANEL_HOLD_MS = 600L
         private const val BLOCK_GRACE_MS = 3000L
         private const val FLASH_MS = 400L
-        private const val HINT_SCALE = 1.0f
 
         /** View pixels of a system drag -> metres at 1 m (0.4 mm each, times the depth factor). */
         private const val PX_M = 0.0004f
 
-        /** 18 degrees left and 26 degrees down, 0.6 m from the head (design `panels.console.placement`). */
-        val CONSOLE_OFFSET = Vec3(-(sin(0.3142f) * cos(0.4538f) * 0.6f), -(sin(0.4538f) * 0.6f), -(cos(0.3142f) * cos(0.4538f) * 0.6f))
+        /**
+         * 18 degrees left and 18 degrees down, 0.6 m from the head, in the head's level frame (design
+         * `panels.console.placement` said 26 down; v0.1.1 follows taste profile D10, 10 - 20 degrees under the view line).
+         */
+        val CONSOLE_OFFSET = Vec3(-(sin(0.3142f) * cos(0.3142f) * 0.6f), -(sin(0.3142f) * 0.6f), -(cos(0.3142f) * cos(0.3142f) * 0.6f))
 
-        /** While pushing the console sinks to 32 degrees so it does not cover the floor ahead. */
-        val CONSOLE_OFFSET_PUSHING = Vec3(-(sin(0.3142f) * cos(0.5585f) * 0.6f), -(sin(0.5585f) * 0.6f), -(cos(0.3142f) * cos(0.5585f) * 0.6f))
+        /** While pushing the console sinks to 20 degrees (was 32) so it covers less of the floor ahead. */
+        val CONSOLE_OFFSET_PUSHING = Vec3(-(sin(0.3142f) * cos(0.3491f) * 0.6f), -(sin(0.3491f) * 0.6f), -(cos(0.3142f) * cos(0.3491f) * 0.6f))
+
+        /** Console beside the handle: a wall this close on that side sends it to the other handle; 0.3 s slide. */
+        private const val MOUNT_WALL_M = 0.25f
+        private const val MOUNT_SLIDE_S = 0.3f
+        private const val LIFT_EASE_S = 0.15f
 
         /** The console leans back 12 degrees. */
         val CONSOLE_LEAN: Quat4 = Quat4.axisAngle(Vec3.RIGHT, -0.20944f)
@@ -914,8 +1151,7 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
         /** Half sizes of the console at 0.75 (0.24 x 0.25 m) with a little air, for the surface rule. */
         private val CONSOLE_HALF_EXTENTS = listOf(0.13f, 0.13f, 0.01f)
 
-        /** The hint bar 15 degrees above the view centre, 1.0 m away. */
-        val HINT_OFFSET = Vec3(0f, sin(0.2618f) * 1.0f, -cos(0.2618f) * 1.0f)
-        private val HINT_HALF_EXTENTS = listOf(0.20f, 0.03f, 0.01f)
+        /** The dialog: 8 degrees right and 10 degrees down, 1.0 m, clear of the console on the left (D8 / D10). */
+        val DIALOG_OFFSET = Vec3(sin(0.1396f) * cos(0.1745f) * PanelSpec.DIALOG_DISTANCE_M, -sin(0.1745f) * PanelSpec.DIALOG_DISTANCE_M, -cos(0.1396f) * cos(0.1745f) * PanelSpec.DIALOG_DISTANCE_M)
     }
 }
