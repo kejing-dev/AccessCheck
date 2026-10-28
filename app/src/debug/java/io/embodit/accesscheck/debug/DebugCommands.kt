@@ -46,6 +46,7 @@ import java.util.Locale
  * - `aim_ahead m [side]`        same, at the floor point m ahead of the head (level) and side to its right
  * - `trigger 1|0`, `stick x`    stand-in trigger / thumbstick x (-1..1; `stick 0` releases)
  * - `chair manual|power|child`, `chair_size w l h` (cm) the chair preset / its size (v0.1.2)
+ * - `no_planes 1|0`             from the next launch the scene reports no planes (the virtual floor path, D7)
  * - `grip 1|0`, `move_ray dx dz` stand-in grip; slide the stand-in controller level (pushing it by the trigger / grip)
  * - `hand x y z [open|fist|pinch] [left|right]`, `hand off`  stand-in tracked hand (palm in Stage metres)
  * - `hand_handle [open|fist|pinch] [left|right]`, `hand_move dx dz`  the stand-in hand at the push handle; move it
@@ -171,6 +172,12 @@ internal object DebugCommands {
             "aim_ahead" -> AcLog.i(scene?.aimAhead(num(0, "m") ?: 1.5f, num(1, "side") ?: 0f) ?: NO_SCENE)
             "trigger" -> AcLog.i(scene?.setDebugPointer(null, num(0, "v") ?: if (word == "on") 1f else 0f, null) ?: NO_SCENE)
             "stick" -> AcLog.i(scene?.setDebugPointer(null, null, num(0, "x") ?: 0f) ?: NO_SCENE)
+            "no_planes" -> {
+                val f = File(context.filesDir, AcProbe.NO_PLANES_FILE)
+                val on = num(0, "v") == 1f || word == "on"
+                if (on) f.writeText("1") else f.delete()
+                AcLog.i("CMD no_planes=$on (from the next launch)")
+            }
             "chair_size" -> {
                 val c = host.uiState().chair
                 host.dispatch(AccessEvent.ChairSized(num(0, "w")?.toInt() ?: c.widthCm, num(1, "l")?.toInt() ?: c.lengthCm, num(2, "h")?.toInt() ?: c.heightCm, done = true))

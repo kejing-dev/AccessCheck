@@ -49,7 +49,8 @@ private const val FADE_IN_MS = 150
 /**
  * The dialogs (self-built attachment panel, 440 x 240, 1.0 m ahead): clear confirmation (S22) and
  * "can't run right now" (S20). In a Stage the SpatialUI `AlertDialog` composes nothing (Spatial Ruler
- * finding), so the card is built to its metrics.
+ * finding), so the card is built to its metrics. v0.1.2: a solid ink card like the hint and the report (its
+ * glass rendered black in the Stage and took the adaptive dark label and the Cancel key with it).
  */
 @Composable
 internal fun DialogPanel(dialog: DialogKind?, onEvent: (AccessEvent) -> Unit) {
@@ -58,9 +59,9 @@ internal fun DialogPanel(dialog: DialogKind?, onEvent: (AccessEvent) -> Unit) {
         if (dialog == null) return@Box
         val fade = remember(dialog) { Animatable(0f) }
         LaunchedEffect(dialog) { fade.animateTo(1f, tween(FADE_IN_MS)) }
-        val ink = PicoTheme.colorScheme.labelPrimary
+        val ink = AcColors.White
         Column(
-            modifier = Modifier.width(w.dp).heightIn(max = h.dp).graphicsLayer { alpha = fade.value }.clip(RoundedCornerShape(32.dp)).backgroundMaterial(enable = true, style = Material.Thick).padding(28.dp),
+            modifier = Modifier.width(w.dp).heightIn(max = h.dp).graphicsLayer { alpha = fade.value }.clip(RoundedCornerShape(32.dp)).background(AcColors.PlateInk.copy(alpha = 0.96f)).padding(28.dp),
         ) {
             Row(modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 40.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Icon(
@@ -80,7 +81,7 @@ internal fun DialogPanel(dialog: DialogKind?, onEvent: (AccessEvent) -> Unit) {
             Spacer(modifier = Modifier.height(20.dp))
             Row(modifier = Modifier.fillMaxWidth().height(48.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
                 if (dialog == DialogKind.CLEAR) {
-                    WordButton("dialog_cancel", rs(R.string.action_cancel), { onEvent(AccessEvent.DialogDismissed) }, minWidth = 120.dp, iconRes = R.drawable.ic_close)
+                    WordButton("dialog_cancel", rs(R.string.action_cancel), { onEvent(AccessEvent.DialogDismissed) }, minWidth = 120.dp, iconRes = R.drawable.ic_close, onInk = true)
                     WordButton("dialog_confirm", rs(R.string.action_clear), { onEvent(AccessEvent.ClearConfirmed) }, danger = true, minWidth = 120.dp, iconRes = R.drawable.ic_trash)
                 } else {
                     WordButton("dialog_exit", rs(R.string.action_exit), { onEvent(AccessEvent.ExitClicked) }, primary = true, minWidth = 120.dp, iconRes = R.drawable.ic_exit)

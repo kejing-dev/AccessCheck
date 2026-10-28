@@ -10,9 +10,9 @@ import io.embodit.accesscheck.domain.model.segmentEntersObb
  * Keeps the head-following console clear of the wheelchair (design v2 `occlusionRule`, QA q1-1: pushing,
  * the console fell behind the chair's back). [liftedY]: the console must not sit in the chair's box
  * (footprint + 5 cm, up to the handle + 0.10 m) nor behind it as seen from the eye; then it rises to 0.15 m
- * above the box, but (v0.1.2) never higher than [MAX_TOP_BELOW_EYE_M] under the eye (taste profile D10), and
- * what that capped lift cannot clear (standing right behind a parked chair) [sideShift] clears by sliding it a
- * little sideways. (v0.1.1 also hung it beside the push handle;
+ * above the box, but (v0.1.2) never higher than [MAX_TOP_BELOW_EYE_M] under the eye ([maxCenterY], taste
+ * profile D10); what that capped lift cannot clear the scene handles by letting the pointer through the chair.
+ * (v0.1.1 also hung it beside the push handle;
  * v0.1.2 dropped that: the user wants the panels to follow the head and face it.)
  *
  * Pure math, JVM tested.
@@ -35,25 +35,10 @@ class ConsoleLiftUseCase {
         return maxOf(panel.y, top + LIFT_CLEAR_M + halfH)
     }
 
-    /**
-     * How far (0 .. [maxM], in [stepM] steps) the console must slide along [side] (a level unit vector, the
-     * viewer's left) before the chair neither holds nor hides it; [maxM] when no slide is enough.
-     */
-    fun sideShift(panel: Vec3, halfH: Float, side: Vec3, pose: ChairPose, model: ChairModel, floorY: Float, head: Vec3, maxM: Float = MAX_SHIFT_M, stepM: Float = 0.05f): Float {
-        var d = 0f
-        while (d < maxM + 1e-4f) {
-            val p = panel + side * d
-            if (liftedY(p, halfH, pose, model, floorY, head) <= p.y + 1e-4f) return d
-            d += stepM
-        }
-        return maxM
-    }
-
     /** The highest centre the console may be lifted to: its top edge [MAX_TOP_BELOW_EYE_M] under the eye. */
     fun maxCenterY(head: Vec3, halfH: Float): Float = head.y - MAX_TOP_BELOW_EYE_M - halfH
 
     companion object {
-        const val MAX_SHIFT_M = 0.3f
         const val MAX_TOP_BELOW_EYE_M = 0.08f
         const val BOX_GROW_M = 0.05f
         const val BOX_ABOVE_HANDLE_M = 0.10f

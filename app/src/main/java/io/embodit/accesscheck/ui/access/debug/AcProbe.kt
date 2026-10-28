@@ -19,6 +19,14 @@ import java.util.concurrent.ConcurrentHashMap
 object AcProbe {
     @Volatile var enabled: Boolean = false
 
+    /**
+     * QA: the scene reports no planes at all (the "nothing recognised" path, taste profile D7; the emulator room
+     * always reports a floor). Set by the debug `no_planes 1` through the marker file [NO_PLANES_FILE] in the app's
+     * files, so that it holds from the next launch on.
+     */
+    @Volatile var noPlanes: Boolean = false
+    const val NO_PLANES_FILE = "debug_no_planes"
+
     data class ControlBounds(val cx: Float, val cy: Float, val w: Float, val h: Float)
 
     private val controls = ConcurrentHashMap<String, ConcurrentHashMap<String, ControlBounds>>()

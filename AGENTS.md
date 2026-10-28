@@ -34,8 +34,8 @@ no controller aims (taste profile D1: never the head unless nothing else is trac
 chair's size is adjustable (ChairModel = preset + width / length / height in cm, More menu sliders, remembered;
 the door pass needs the chair width + 5 cm), the colour roles were fixed after "the UI colours are off" (dark
 fills carry labelPrimaryLight, selected states the accent with ink; every text >= 4.5:1, measured in
-build/ui-audit.md), the menu opens to the right of the console, the console slides aside before it lifts, and
-the chair plate floats over the chair's front end.
+build/ui-audit.md), the menu opens to the right of the console, the console lifts no higher than under the eye
+(the chair lets taps through when it still hides it), and the chair plate floats over the chair's front end.
 
 ## Structure
 
@@ -151,8 +151,8 @@ top; v0.1.1 adds the mute / panel-back keys in the title row and the "Bring here
 looking down at a threshold no longer drops it under the body), and wherever it rests it turns to face the
 head's current position every frame (v0.1.2; v0.1.1 hung it beside the push handle while pushing, design v2
 q1-1, dropped at the user's "panels follow the head and face it"). When the chair would hold or hide it, it
-rises to 0.15 m above the chair's box, its top kept 8 cm under the eye, and what that capped lift cannot clear
-a slide of up to 0.3 m to the viewer's left does (ConsoleLiftUseCase.sideShift); it faces the head from there. A pushed / waiting / placing chair takes no taps (the pointer passes through to the console).
+rises to 0.15 m above the chair's box, its top kept 8 cm under the eye; when that is not enough (standing right
+behind the chair) it stays and the standing chair takes no taps, so its buttons are reached through the chair. A pushed / waiting / placing chair takes no taps (the pointer passes through to the console).
 `hint` 480 x 64 sits on top of the console at 0.75: below the view line.
 `chairPlate` 280 x 96 over the chair's front end (v0.1.2; over the push handle it hung in the face of whoever
 stood behind the chair) (hidden while pushing); `doorPlateA` / `doorPlateB` 300 x 112
@@ -178,6 +178,7 @@ adb -s <serial> shell "am broadcast -a io.embodit.accesscheck.DEBUG -p io.embodi
 | `aim_ahead m [side]` | the same, at the floor point m ahead of the head (level) and side to its right |
 | `ray ox oy oz dx dy dz`, `ray off` | stand-in controller ray in Stage metres (`ray off` = the real controller) |
 | `trigger 1|0`, `stick x` | stand-in trigger and thumbstick x (-1..1; `stick 0` releases) |
+| `no_planes 1|0` | from the next launch the scene reports no planes: the virtual floor after 5 s (D7) |
 | `chair manual|power|child`, `chair_size w l h` | chair preset / its size in cm (v0.1.2; clamped to 55-80 / 90-130 / 80-110) |
 | `grip 1|0`, `move_ray dx dz` | stand-in grip; slide the stand-in controller level. Held push: `aim` at the chair, `trigger 1` (or `grip 1`), `move_ray 0 -0.5`, `trigger 0` |
 | `hand x y z [open|fist|pinch] [left|right]`, `hand off` | stand-in tracked hand (palm, Stage metres) |

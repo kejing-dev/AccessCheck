@@ -1543,6 +1543,9 @@ class AccessViewModel(private val appContext: Context) : ViewModel() {
         o.put("phase", s.phase.name)
         o.put("chairMode", s.chairMode.name)
         o.put("chair", s.chair.tag)
+        o.put("chairCm", "${s.chair.widthCm}x${s.chair.lengthCm}x${s.chair.heightCm}")
+        o.put("virtualFloor", s.virtualFloor)
+        o.put("floorY", s.floorY.toDouble())
         s.pose?.let { p -> o.put("pose", JSONObject().put("x", p.center.x.toDouble()).put("z", p.center.z.toDouble()).put("yawDeg", Math.toDegrees(p.theta.toDouble()))) }
         o.put("hit", s.hit)
         o.put("tool", s.tool.name)

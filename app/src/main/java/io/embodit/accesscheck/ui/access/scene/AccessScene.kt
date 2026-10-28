@@ -165,7 +165,6 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
     // the console clear of the chair
     private val liftRule = ConsoleLiftUseCase()
     private var consoleLift = 0f
-    private var consoleShift = 0f
     private var consoleHidden = false
     private var activeHits = HashMap<String, V2>()
     private var prevCenter: V2? = null
@@ -224,6 +223,8 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
             val (w, h) = PanelSpec.size(id)
             rig.world(id, w, h)
         }
+        AcProbe.noPlanes = AccessGraph.appContext?.let { java.io.File(it.filesDir, AcProbe.NO_PLANES_FILE).exists() } == true
+        if (AcProbe.noPlanes) AcLog.i("PLANES ignored (debug no_planes)")
         headTracker.start()
         controller.start()
         hands.start()
@@ -364,7 +365,7 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
 
     /**
      * Only a standing chair takes taps and drags: pushing, waiting or placing, the pointer passes through it (q1-1);
-     * so does a standing chair that still hides the console after its lift and slide (v0.1.2).
+     * so does a standing chair that still hides the console after its lift (v0.1.2).
      */
     private fun syncTappable(state: AccessUiState) {
         val standing = state.chairMode == ChairMode.PARKED || state.chairMode == ChairMode.DRAGGING || state.chairMode == ChairMode.TURNING
@@ -830,33 +831,26 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
     // ---- panels
     /**
      * The console on the lazy head follow, facing the head (v0.1.2: no longer hung beside the push handle). When
-     * the chair would hold or hide it (design `occlusionRule`) it rises, its top kept under the eye (D10), and
-     * what that cannot clear a short slide to the viewer's left does (at most 0.3 m: it stays in view).
+     * the chair would hold or hide it (design `occlusionRule`) it rises, its top kept under the eye (D10); when
+     * that is not enough (standing right behind the chair) it stays there and the chair takes no taps, so its
+     * buttons are reached through the chair (syncTappable). A slide sideways was tried: it left the view.
      */
     private fun consolePose(state: AccessUiState, dt: Float): Pair<Vec3, Float> {
         val (_, hh) = PanelSpec.halfM(PanelSpec.CONSOLE, PanelSpec.MAIN_SCALE)
         val chairPose = shownPose ?: livePose
         val follow = consoleFollower.pose
-        val left = Quat4.axisAngle(Vec3.UP, follow.yaw).rotate(Vec3(-1f, 0f, 0f))
-        val k = (dt / LIFT_EASE_S).coerceIn(0f, 1f)
+        val p = follow.position
         // (not for the see-through ghost: the console would bob up and down as it passes under)
         if (chairPose != null && state.chairMode != ChairMode.NONE && state.chairMode != ChairMode.PLACING && !state.trackingLost) {
-            // lift first, its top kept under the eye; what that cannot clear, a short slide to the left does
-            val p = follow.position
-            val liftTo = minOf(liftRule.liftedY(p, hh, chairPose, state.chair, state.floorY, head.position), maxOf(p.y, liftRule.maxCenterY(head.position, hh)))
-            val shift = liftRule.sideShift(Vec3(p.x, liftTo, p.z), hh, left, chairPose, state.chair, state.floorY, head.position)
-            consoleLift += (liftTo - p.y - consoleLift) * k
-            consoleShift += (shift - consoleShift) * k
-            val end = Vec3(p.x, liftTo, p.z) + left * shift
-            consoleHidden = liftRule.liftedY(end, hh, chairPose, state.chair, state.floorY, head.position) > end.y + 1e-4f
+            val needed = liftRule.liftedY(p, hh, chairPose, state.chair, state.floorY, head.position)
+            val liftTo = minOf(needed, maxOf(p.y, liftRule.maxCenterY(head.position, hh)))
+            consoleLift += (liftTo - p.y - consoleLift) * (dt / LIFT_EASE_S).coerceIn(0f, 1f)
+            consoleHidden = liftRule.liftedY(Vec3(p.x, liftTo, p.z), hh, chairPose, state.chair, state.floorY, head.position) > liftTo + 1e-4f
         } else {
-            consoleHidden = false
-            consoleShift += (0f - consoleShift) * k
             consoleLift = 0f
+            consoleHidden = false
         }
-        val at = follow.position + left * consoleShift
-        // facing the head from where it ends up (the follow faced it from the unshifted spot)
-        return Vec3(at.x, at.y + consoleLift, at.z) to Follower.facingYaw(at, head.position, follow.yaw)
+        return Vec3(p.x, p.y + consoleLift, p.z) to follow.yaw
     }
 
     private fun placeConsoleFamily(state: AccessUiState, rig: PanelRig, dt: Float) {
@@ -938,8 +932,8 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
     }
 
     private fun pollPlanes(now: Long) {
-        val count = planeTracker.count
-        val planes = planeTracker.all
+        val planes = if (AcProbe.noPlanes) emptyList() else planeTracker.all
+        val count = planes.size
         val hasFloor = planes.any { it.kind == SurfaceKind.FLOOR }
         if (count == lastPlaneCount && hasFloor == lastFloor) return
         if (now - lastPlanesEmitMs < PLANES_EMIT_MS) return

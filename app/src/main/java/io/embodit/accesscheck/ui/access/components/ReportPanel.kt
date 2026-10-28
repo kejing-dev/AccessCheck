@@ -104,7 +104,8 @@ private fun Section(title: String) {
 @Composable
 private fun Line(text: String, ok: Boolean? = null, warn: Boolean = false, onDelete: (() -> Unit)? = null) {
     Row(
-        modifier = Modifier.fillMaxWidth().background(AcColors.White.copy(alpha = 0.10f), androidx.compose.foundation.shape.RoundedCornerShape(12.dp)).padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+        // 7 % white (was 10 %): the error red on the row reaches 4.9:1 (4.4:1 before), white 14.6:1 (v0.1.2 contrast sweep)
+        modifier = Modifier.fillMaxWidth().background(AcColors.White.copy(alpha = 0.07f), androidx.compose.foundation.shape.RoundedCornerShape(12.dp)).padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         val color = when { ok == true -> PicoTheme.colorScheme.passable; ok == false -> PicoTheme.colorScheme.error; warn -> PicoTheme.colorScheme.alert; else -> AcColors.White }
