@@ -195,6 +195,22 @@ class AccessViewModel(private val appContext: Context) : ViewModel() {
                     onChairMoved(event.pose, settled = true)
                 }
             }
+            is AccessEvent.HoldStarted -> {
+                // v0.1.2: trigger / grip / a closed hand on the chair pushes it while held
+                if ((chairMode == ChairMode.PARKED || chairMode == ChairMode.WAITING_BEHIND) && !trackingLost && pose != null) {
+                    AcLog.i("PUSH start by=${event.by}")
+                    if (hint?.kind == HintKind.WAIT_BEHIND) clearHint()
+                    beginPush()
+                }
+            }
+            is AccessEvent.HoldEnded -> {
+                if (chairMode == ChairMode.PUSHING) {
+                    AcLog.i("PUSH end by=release at=(${fmt(event.pose.center.x)}, ${fmt(event.pose.center.z)})")
+                    pose = event.pose
+                    park()
+                    onChairMoved(event.pose, settled = true)
+                }
+            }
             is AccessEvent.PlaceConfirmed -> if (chairMode == ChairMode.PLACING) confirmPlace(event.pose, "trigger")
             is AccessEvent.AimChanged -> onAim(event.onFloor)
             AccessEvent.ChairTapped -> if (chairMode == ChairMode.PLACING) confirmPlace(null, "pinch")

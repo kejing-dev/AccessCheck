@@ -85,6 +85,19 @@ object AcProbe {
 
         /** Same, at the floor point [aheadM] in front of the head (level) and [sideM] to its right. */
         fun aimAhead(aheadM: Float, sideM: Float): String
+
+        /** v0.1.2 stand-ins: the stand-in controller's grip (0..1) and moving it level by (dx, dz). */
+        fun setDebugGrip(value: Float): String
+
+        fun moveDebugPointer(dx: Float, dz: Float): String
+
+        /** A stand-in tracked hand: palm in Stage metres, [closed] = open | fist | pinch; null palm = real hands. */
+        fun setDebugHand(palm: io.embodit.accesscheck.domain.model.Vec3?, closed: String, right: Boolean): String
+
+        /** The stand-in hand at the chair's left / right grip, 5 cm behind the handle bar. */
+        fun handAtHandle(closed: String, right: Boolean): String
+
+        fun moveDebugHand(dx: Float, dz: Float): String
     }
 
     @Volatile var host: Host? = null

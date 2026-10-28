@@ -12,8 +12,8 @@ import kotlin.math.abs
 /**
  * Pointing the chair onto the floor (taste profile D1 "the landing point follows the controller ray",
  * D14 "keep clear of the person"): the ray's floor point, the last good one while the ray misses, the
- * push out of the clearance around the head, the facing "away from the person", the grab offset of a
- * drag, and the ray's hits on the chair and on panels (a ray resting on a panel moves nothing).
+ * push out of the clearance around the head, the facing "away from the person", and the ray's hits on
+ * the chair (taking hold of it, v0.1.2) and on panels (a ray resting on a panel moves nothing).
  * Pure math, JVM tested.
  */
 class FloorAimUseCase(
@@ -74,9 +74,6 @@ class FloorAimUseCase(
         val c = clear(aim, head, forward)
         return ChairPose(c, awayYaw(c, head, V2.yawOf(flat(forward))) + extraYaw)
     }
-
-    /** A drag keeps the grab point under the ray: centre = floor point + the offset taken at the grab. */
-    fun dragged(aim: V2, grabOffset: V2, head: V2, forward: V2): V2 = clear(aim + grabOffset, head, forward)
 
     /**
      * Distance along [ray] to the chair's box (footprint x height, on the floor), or null. Slab test in

@@ -45,6 +45,9 @@ import java.util.Locale
  * - `aim x z`                   stand-in controller beside the head, pointing at the floor point (x, z)
  * - `aim_ahead m [side]`        same, at the floor point m ahead of the head (level) and side to its right
  * - `trigger 1|0`, `stick x`    stand-in trigger / thumbstick x (-1..1; `stick 0` releases)
+ * - `grip 1|0`, `move_ray dx dz` stand-in grip; slide the stand-in controller level (pushing it by the trigger / grip)
+ * - `hand x y z [open|fist|pinch] [left|right]`, `hand off`  stand-in tracked hand (palm in Stage metres)
+ * - `hand_handle [open|fist|pinch] [left|right]`, `hand_move dx dz`  the stand-in hand at the push handle; move it
  * - `replace`, `bring`, `place_here`, `place_cancel`, `mute`, `recall`
  * - `dump`, `pose`, `bounds`, `planes`, `park_panel`, `fps on|off`
  */
@@ -167,6 +170,22 @@ internal object DebugCommands {
             "aim_ahead" -> AcLog.i(scene?.aimAhead(num(0, "m") ?: 1.5f, num(1, "side") ?: 0f) ?: NO_SCENE)
             "trigger" -> AcLog.i(scene?.setDebugPointer(null, num(0, "v") ?: if (word == "on") 1f else 0f, null) ?: NO_SCENE)
             "stick" -> AcLog.i(scene?.setDebugPointer(null, null, num(0, "x") ?: 0f) ?: NO_SCENE)
+            "grip" -> AcLog.i(scene?.setDebugGrip(num(0, "v") ?: if (word == "on") 1f else 0f) ?: NO_SCENE)
+            "move_ray" -> AcLog.i(scene?.moveDebugPointer(num(0, "dx") ?: 0f, num(1, "dz") ?: 0f) ?: NO_SCENE)
+            "hand", "hand_handle" -> {
+                val words = word.split(" ").filter { it.isNotEmpty() && it.toFloatOrNull() == null }
+                val closed = words.firstOrNull { it == "fist" || it == "open" || it == "pinch" } ?: "open"
+                val right = "left" !in words && "l" !in words
+                AcLog.i(
+                    when {
+                        name == "hand_handle" -> scene?.handAtHandle(closed, right) ?: NO_SCENE
+                        "off" in words -> scene?.setDebugHand(null, closed, right) ?: NO_SCENE
+                        numbers.size >= 3 -> scene?.setDebugHand(Vec3(numbers[0], numbers[1], numbers[2]), closed, right) ?: NO_SCENE
+                        else -> "CMD hand needs x y z [open|fist|pinch] [left|right], or off"
+                    }
+                )
+            }
+            "hand_move" -> AcLog.i(scene?.moveDebugHand(num(0, "dx") ?: 0f, num(1, "dz") ?: 0f) ?: NO_SCENE)
             "replace" -> host.dispatch(AccessEvent.ReplaceClicked)
             "bring" -> host.dispatch(AccessEvent.BringChairClicked)
             "place_here" -> host.dispatch(AccessEvent.PlaceHereClicked)

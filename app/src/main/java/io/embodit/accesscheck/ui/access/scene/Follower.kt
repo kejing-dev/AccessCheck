@@ -10,6 +10,7 @@ import io.embodit.accesscheck.platform.tracking.HeadPose
 import java.util.Locale
 import kotlin.math.PI
 import kotlin.math.acos
+import kotlin.math.atan2
 
 /** A pose in Stage space: where a followed thing sits and its level turn (yaw about the vertical). */
 data class FollowPose(val position: Vec3, val yaw: Float) {
@@ -26,6 +27,8 @@ data class FollowPose(val position: Vec3, val yaw: Float) {
  * only, never by its pitch or roll (v0.1.1, UI sweep: looking down at a threshold dropped the console
  * under the body), and "off to the side" is measured in the level plane too, so looking up and down
  * moves nothing. The surface rule keeps it out of real surfaces ([halfExtents] along its own axes).
+ * Wherever it rests it always faces the head (v0.1.2, the user: "UI panels should follow the head and face
+ * it"): every frame its yaw turns its front to the head's current position, about the vertical only.
  */
 internal class Follower(
     private val name: String,
@@ -49,6 +52,7 @@ internal class Follower(
     private var slideToYaw = 0f
     private var slideToApplied = Vec3.ZERO
     private var lastPlaneCount = -1
+    private var headAt: Vec3? = null
 
     /** The current pose (centre and level turn). */
     var pose: FollowPose = FollowPose(Vec3.ZERO, 0f)
@@ -79,6 +83,7 @@ internal class Follower(
 
     /** Once per frame. Returns true when the pose changed this frame. */
     fun follow(head: HeadPose, planes: Collection<PlaneSurface>, planeCount: Int, nowMs: Long, hold: Boolean): Boolean {
+        headAt = head.position
         if (!started) {
             val (pos, yaw) = designedFor(head)
             started = true
@@ -121,6 +126,8 @@ internal class Follower(
                 return true
             }
         }
+        // still resting: keep facing the head as it moves
+        write()
         return false
     }
 
@@ -158,12 +165,20 @@ internal class Follower(
     }
 
     private fun write() {
-        pose = FollowPose(anchorPos + applied, restYaw)
+        val at = anchorPos + applied
+        pose = FollowPose(at, headAt?.let { facingYaw(at, it, restYaw) } ?: restYaw)
     }
 
     companion object {
         /** Where [offset] (head frame) lands for a head at [head] turned to [yaw]: level, whatever the pitch. */
         fun designed(head: Vec3, yaw: Float, offset: Vec3): Vec3 = head + Quat4.axisAngle(Vec3.UP, yaw).rotate(offset)
+
+        /** The yaw that turns a panel at [panel] (front = its +Z) to the head at [head]; [fallback] right above it. */
+        fun facingYaw(panel: Vec3, head: Vec3, fallback: Float): Float {
+            val to = head - panel
+            if (to.x * to.x + to.z * to.z < 1e-6f) return fallback
+            return atan2(to.x, to.z)
+        }
 
         /**
          * Degrees between [to] and the view direction [forward], both flattened to the floor plane (the

@@ -105,19 +105,6 @@ class FloorAimUseCaseTest {
     }
 
     @Test
-    fun dragKeepsTheGrabOffsetAndTheClearance() {
-        val chair = V2(0.5f, -2f)
-        val grab = V2(0.3f, -1.8f)
-        val offset = chair - grab
-        val moved = rule.dragged(V2(1.3f, -2.8f), offset, head, ahead)
-        assertEquals(1.5f, moved.x, eps)
-        assertEquals(-3.0f, moved.z, eps)
-        // dragged onto the person: pushed back out to the clearance edge
-        val onMe = rule.dragged(V2(-0.2f, 0.2f), offset, head, ahead)
-        assertEquals(AccessRules.CLEARANCE_M, onMe.length, eps)
-    }
-
-    @Test
     fun rayHitsTheChairBoxOnlyWhenAimedAtIt() {
         val model = ChairModel.MANUAL
         val pose = ChairPose(V2(0f, -2f), 0.7f)

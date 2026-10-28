@@ -6,9 +6,9 @@
 
 **Push a life-size virtual wheelchair around your own bathroom: whatever it bumps turns red and leaves a scuff, the turning circle and the door width / threshold light up green or red on the spot, and you save a report at the end.**
 
-PICO OS 6 · PICO Spatial SDK 6.1.9 · Kotlin / SpatialUI · package `io.embodit.accesscheck` · v0.1.1 (pre-release / 预发布)
+PICO OS 6 · PICO Spatial SDK 6.1.9 · Kotlin / SpatialUI · package `io.embodit.accesscheck` · v0.1.2 (pre-release / 预发布)
 
-> **v0.1.1：按真机反馈改了轮椅摆放（跟手柄射线落点），QA 待复核；真机未全面验证（v0.1.1: wheelchair placing reworked after headset feedback; QA re-check pending; not fully verified on a headset）。**
+> **v0.1.2：按真机反馈改了放好后的推动（按住扳机 / 握把或手握推把推着走）和面板朝向，QA 待复核；真机未全面验证（v0.1.2: pushing after placing reworked after headset feedback — hold trigger / grip or grab the handle; QA re-check pending; not fully verified on a headset）。**
 
 ![封面：停着的轮椅外一整圈绿色 1.5 米转身圆，读数牌「转得开 ✓」，上方是体检台](docs/cover-S8-turn-ok.jpg)
 
@@ -29,7 +29,7 @@ PICO OS 6 · PICO Spatial SDK 6.1.9 · Kotlin / SpatialUI · package `io.embodit
 
 ```bash
 adb shell am force-stop io.embodit.accesscheck
-adb install -r AccessCheck-v0.1.1.apk
+adb install -r AccessCheck-v0.1.2.apk
 pico-cli app launch io.embodit.accesscheck
 ```
 
@@ -56,6 +56,13 @@ APK 在 [Releases](https://github.com/kejing-dev/AccessCheck/releases) 页面下
 
 <img src="docs/launcher.jpg" width="360" alt="系统「回到主页」框里的应用图标">
 
+### v0.1.2 改了什么（第二次真机反馈）
+
+- **放好后按住就推**：手柄射线指着轮椅（或手柄靠近推把）按住扳机或握把，轮椅就跟着手柄走，松开就停在那儿（门前照样吸附）。推把和手柄的相对位置在按下那一刻锁住，往前推跟着走、边推边往旁边带就转弯、往回拉就直着倒；两只手柄一起握住时，转动两手就转轮椅。摇杆左右照样转。不再跟着射线在地面的落点跑。
+- **手势也能推**：手伸到推把上握拳（或捏合）就抓住，松开就放下，同样跟着手走；两只手一起握也行。
+- **面板跟着头、面朝头**：体检台懒跟随你的水平朝向，停在视线下方约 18°，你走到哪儿它都转过来正对你；不再挂到推把外侧。
+- 没有手柄时，摆放幽灵跟手的指向射线走（不再用头的朝向）。
+
 ### v0.1.1 改了什么（用户真机反馈后的打磨）
 
 - **轮椅跟着手柄射线在地面的落点走**：半透明「幽灵」实时跟随，扳机放下；没手柄时对着地面捏合放下，或点体检台「放在这里」。射线指天或超过 6 米时停在上一个有效点并提示「请指向地面」。默认背对你（推的方向），摇杆左右转。
@@ -75,7 +82,7 @@ APK 在 [Releases](https://github.com/kejing-dev/AccessCheck/releases) 页面下
 5. ~~英文报告里夹着中文全角括号和冒号~~ —— v0.1.1 已修。
 6. 仅调试路径：直接跳到「撞了」状态撞不上墙；调试眼高覆盖会把体检台挪走，关掉后读数错到重开。真实路径正常。
 
-还没在头显上验过：手柄射线放轮椅 / 扳机拖动（模拟器没有手柄，用调试广播模拟射线验证）、手柄摇杆转轮椅、真走路推轮椅的手感、真坐下 / 蹲下的眼高、马桶台盆柜这类靠空间网格识别的障碍准不准、厘米级碰撞、门宽自动读数和实际净宽差多少、权限流程、PICO 文件管理器能不能看到报告。
+还没在头显上验过：手柄射线放轮椅、按住扳机 / 握把推轮椅、手握推把推轮椅（模拟器没有手柄和手部追踪，用调试广播模拟验证）、手柄摇杆转轮椅、真走路推轮椅的手感、真坐下 / 蹲下的眼高、马桶台盆柜这类靠空间网格识别的障碍准不准、厘米级碰撞、门宽自动读数和实际净宽差多少、权限流程、PICO 文件管理器能不能看到报告。
 
 ---
 
@@ -91,7 +98,7 @@ Stopped, tap Turn around: the chair spins on the spot and a 1.5 m turning circle
 
 ```bash
 adb shell am force-stop io.embodit.accesscheck
-adb install -r AccessCheck-v0.1.1.apk
+adb install -r AccessCheck-v0.1.2.apk
 pico-cli app launch io.embodit.accesscheck
 ```
 
@@ -106,6 +113,13 @@ Download the APK from the [Releases](https://github.com/kejing-dev/AccessCheck/r
 ### Screenshots
 
 See the table above: a bump, a turning circle that is short, a door that passes and one that does not, snapping at a door, and the report card.
+
+### What changed in v0.1.2 (second round of headset feedback)
+
+- **Hold it to push it**: point the controller ray at the parked chair (or bring the controller to the push handle) and hold the trigger or the grip; the chair moves with the controller and stops where you let go (door snap still applies). The handle's place relative to the controller is locked when you press: push forward and it follows, drift sideways while pushing and it turns, pull back and it reverses straight; holding with both controllers, turning your hands turns the chair. The thumbstick still turns it. It no longer chases the ray's floor point.
+- **Hands too**: close a fist (or pinch) at the push handle to take hold, open to let go; it follows your hand, or both hands.
+- **Panels follow your head and face you**: the console lazily follows your heading about 18° below eye level and turns to face you wherever you stand; it no longer hangs beside the push handle.
+- Without a controller the placing ghost follows the hand's pointing ray (not where your head looks).
 
 ### What changed in v0.1.1 (polish after headset feedback)
 
@@ -126,7 +140,7 @@ See the table above: a bump, a turning circle that is short, a door that passes 
 5. ~~The English report contains full-width Chinese brackets and colons~~ — fixed in v0.1.1.
 6. Debug paths only: jumping straight to the "bumped" state does not hit the wall; the debug eye-height override moves the console away and leaves a wrong reading until restart. Real paths are fine.
 
-Not yet verified on a headset: placing with the controller ray and trigger-dragging (the emulator has no controller; verified with a debug stand-in ray), thumbstick turning, the feel of pushing by walking, real seated / crouching eye heights, how well the spatial mesh catches toilets and basin cabinets, centimetre-level bumps, automatic door width versus the real clear width, the permission flow, and whether the PICO file manager shows the report.
+Not yet verified on a headset: placing with the controller ray, pushing with a held trigger / grip or a hand closed on the handle (the emulator has no controllers or hand tracking; verified with debug stand-ins), thumbstick turning, the feel of pushing by walking, real seated / crouching eye heights, how well the spatial mesh catches toilets and basin cabinets, centimetre-level bumps, automatic door width versus the real clear width, the permission flow, and whether the PICO file manager shows the report.
 
 ---
 

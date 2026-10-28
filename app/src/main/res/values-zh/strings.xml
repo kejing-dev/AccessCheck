@@ -173,7 +173,7 @@
     <string name="action_mute">静音</string>
     <string name="action_unmute">打开声音</string>
     <string name="action_recall">面板回到面前</string>
-    <string name="stick_drag_hint">摇杆左右转动 · 扳机按住轮椅可拖动</string>
+    <string name="stick_drag_hint">摇杆左右转动 · 按住扳机/握把或握住推把推着走</string>
     <string name="hint_aim_floor">请指向地面（6 米内）</string>
     <string name="hint_virtual_floor">没扫到地面，先用标准地面</string>
 </resources>

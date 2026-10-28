@@ -4,6 +4,7 @@ import android.content.Context
 import io.embodit.accesscheck.data.SettingsStore
 import io.embodit.accesscheck.domain.usecase.ObstacleField
 import io.embodit.accesscheck.platform.input.ControllerInput
+import io.embodit.accesscheck.platform.input.HandInput
 import io.embodit.accesscheck.platform.sense.MeshTracker
 import io.embodit.accesscheck.platform.sense.PlaneTracker
 import io.embodit.accesscheck.platform.tracking.HeadTracker
@@ -18,6 +19,7 @@ object AccessGraph {
     val mesh = MeshTracker()
     val head = HeadTracker()
     val controller = ControllerInput()
+    val hands = HandInput()
 
     /** The floor-plan obstacles, fed by the scene, read by the scene and the ViewModel (main thread). */
     val field = ObstacleField()

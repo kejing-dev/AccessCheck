@@ -25,6 +25,13 @@ console beside the push handle while pushing (design v2, QA q1-1) and clear of t
 (yaw-only) panel follow 18° down (D9 / D10, UI sweep), hint on top of the console, mute and "bring the panel
 back" keys (D15 / D9), virtual floor after 5 s without one (D7).
 
+v0.1.2 (2026-10-27, the user on the headset: "after the first placing, pushing should start when the
+controller trigger or grip is pressed, not follow the ray's floor point; hands too, gripping the chair to push
+it; panels should follow the head and face it"): the parked chair is pushed while held (GripUseCase,
+PushFollowUseCase.startHeld), the floor-point trigger drag is gone, the console no longer hangs beside the
+push handle and faces the head every frame (Follower.facingYaw), the placing ghost uses a hand's aim ray when
+no controller aims (taste profile D1: never the head unless nothing else is tracked).
+
 ## Structure
 
 ```
@@ -43,9 +50,9 @@ app/src/main/java/io/embodit/accesscheck/
                                doorways cut out, furniture blocks, 5 cm mesh grid, virtual obstacles; bump / turn /
                                clear-floor / nearest-wall queries), DoorUseCase (doorway from a plane, verdicts),
                                LocateUseCase (place names), HitSurface / ViewFrame / FacePanel / RestBody  [Ruler],
-                               FloorAimUseCase (ray -> floor point, last good point, clearance, facing away, drag
-                               offset, ray vs chair / panel; v0.1.1), ConsoleMountUseCase (console beside the push
-                               handle, lift clear of the chair; v0.1.1)
+                               FloorAimUseCase (ray -> floor point, last good point, clearance, facing away,
+                               ray vs chair / panel; v0.1.1), ConsoleLiftUseCase (the console lifted clear of the
+                               chair), GripUseCase (handle bar, trigger / grip / fist / pinch hysteresis; v0.1.2)
   data/SettingsStore           SharedPreferences: chair model, language, units, coach seen
   ui/theme                     AcColors (the only colour literals), AccessCheckTheme (PicoTheme, 16 roles), typography
   ui/access                    AccessViewModel (the whole state machine), AccessUiState / AccessEvent, AccessScreen
@@ -60,7 +67,8 @@ app/src/main/java/io/embodit/accesscheck/
   ui/access/debug/AcProbe      seams for the debug receiver (no-ops in release)
 app/src/debug/                 DebugCommandReceiver + DebugCommands (the QA hooks)
 app/src/test/                  PushFollowUseCaseTest (forward, backward, sidestep, head turn, arc, behind sector),
-                               FloorAimUseCaseTest, ConsoleMountUseCaseTest, FollowerTest (yaw-only follow, 10-20° down)
+                               FloorAimUseCaseTest, ConsoleLiftUseCaseTest, GripUseCaseTest, FollowerTest (yaw-only
+                               follow, 10-20° down, facing the head); PushFollowUseCaseTest also covers held pushing
 tools/make_icon.ps1            the 512 icon export + legacy mipmap (System.Drawing)
 ```
 
@@ -96,17 +104,24 @@ dragging, thumbstick) it owns the pose and reports it at 10 Hz; otherwise the Vi
   the floor puts it where the hand ray met the floor, a pinch elsewhere or "Put it here" on the console
   where the ghost stands; "Cancel" goes back (to the old spot when placing again). The chair is then parked;
   pushing is optional ("Push").
-- Move it again (v0.1.1): point at the parked chair and hold the trigger: it slides over the floor under the
-  ray (the grab offset kept, the 0.8 m clearance kept, the thumbstick turns it meanwhile); release puts it
-  down (door snap applies). "Bring here" puts it 1.2 m in front of you facing away; "Place again" goes back
-  to the ghost. Standing inside the chair turns it see-through (22 %) so it never fills the view.
+- Push it by holding it (v0.1.2): a controller whose trigger or grip goes down (0.6 on, 0.4 off, or the
+  pressed flag) with its ray on the parked / waiting chair or itself within 25 cm of the push handle bar, or a
+  hand that closes at the bar (fist: index / middle / ring tips within 6 cm of the palm, open past 8 cm; or a
+  pinch 0.8 on / 0.5 off), takes hold: the chair is pushed (PUSHING) while any holder holds, and parks (door
+  snap applies) when the last one lets go. The input is the held grip's floor point (the midpoint of two)
+  instead of the head; the handle's offset from it, along and across the chair, is locked at the press (no
+  ease); steering is the push rule's (forward travel turns towards the drift, backing up is straight); with
+  a left and a right grip held the heading follows the line between them (offset by the turn at the moment
+  both closed). The thumbstick of a holding controller turns it. More grips join at the handle; the system
+  pinch drag of v0.1.0 stays for a far hand. "Bring here" puts it 1.2 m in front of you facing away; "Place
+  again" goes back to the ghost. Standing inside the chair turns it see-through (22 %) so it never fills the view.
 - Push (handle follows the hand): the head's floor point, 3 cm dead zone, 0.15 s low pass; forward
   travel steers at most 0.9 rad per metre, backing up is straight, head turns move nothing. "Push" from
   stopped only starts when you stand in the chair's tail sector (±60°, 0.2 - 1.0 m from the handle);
   otherwise "stand behind the wheelchair" waits for you. Standing still while pressing a wall for 2 s
   gives the stuck hint with "stop and drag".
-- Stop: drag the chair over the floor (press and drag on it; emulator mouse; the controller trigger drag
-  above takes over when a controller aims), turn ±15° with the keys,
+- Stop: drag the chair over the floor (press and drag on it; emulator mouse; a controller or hand that
+  holds it pushes it instead, above), turn ±15° with the keys,
   or turn with the thumbstick (taste rule D1, 90°/s at full deflection). Near a shown door a dashed
   yellow frame marks the approach pose 0.3 m before the door; within 25 cm / 15° the chair snaps to it on
   release.
@@ -127,12 +142,10 @@ Pooled attachment panels, fixed sizes: `console` 400 x 496 at 0.75 (fixed glass,
 top; v0.1.1 adds the mute / panel-back keys in the title row and the "Bring here / Place again" row),
 `menu` 320 x 320 above it and `report` 440 x 560 beside it. The console family follows lazily 18° left,
 18° down (20° while pushing), 0.6 m, leaning back 12°, in the head's level frame (yaw only, v0.1.1:
-looking down at a threshold no longer drops it under the body). While pushing, waiting behind, or standing
-in the parked chair's tail sector it hangs beside the left push handle instead (design v2, q1-1: outside
-the footprint by 8 cm, level with the handle, top edge at handle + 0.40 m held 0.20 - 0.55 m under the
-eye, facing the head; the right handle when a wall is within 0.25 m on the left; 0.3 s slide), and the
-report opens outwards. On the follow it rises 0.15 m above the chair's box whenever the chair would hold
-or hide it. A pushed / waiting / placing chair takes no taps (the pointer passes through to the console).
+looking down at a threshold no longer drops it under the body), and wherever it rests it turns to face the
+head's current position every frame (v0.1.2; v0.1.1 hung it beside the push handle while pushing, design v2
+q1-1, dropped at the user's "panels follow the head and face it"). It rises 0.15 m above the chair's box
+whenever the chair would hold or hide it. A pushed / waiting / placing chair takes no taps (the pointer passes through to the console).
 `hint` 480 x 64 sits on top of the console (or of the menu above it) at 0.75: below the view line.
 `chairPlate` 280 x 96 above the push handle (hidden while pushing); `doorPlateA` / `doorPlateB` 300 x 112
 and `doorCard` 300 x 320 on the door's centre line 20 cm under the top edge; `pinTag` 360 x 72 above a
@@ -156,7 +169,10 @@ adb -s <serial> shell "am broadcast -a io.embodit.accesscheck.DEBUG -p io.embodi
 | `aim x z` | stand-in controller 25 cm right of / 45 cm under the eye, pointing at the floor point (x, z) |
 | `aim_ahead m [side]` | the same, at the floor point m ahead of the head (level) and side to its right |
 | `ray ox oy oz dx dy dz`, `ray off` | stand-in controller ray in Stage metres (`ray off` = the real controller) |
-| `trigger 1|0`, `stick x` | stand-in trigger and thumbstick x (-1..1; `stick 0` releases). Trigger-drag: `aim` at the chair, `trigger 1`, `aim` elsewhere, `trigger 0` |
+| `trigger 1|0`, `stick x` | stand-in trigger and thumbstick x (-1..1; `stick 0` releases) |
+| `grip 1|0`, `move_ray dx dz` | stand-in grip; slide the stand-in controller level. Held push: `aim` at the chair, `trigger 1` (or `grip 1`), `move_ray 0 -0.5`, `trigger 0` |
+| `hand x y z [open|fist|pinch] [left|right]`, `hand off` | stand-in tracked hand (palm, Stage metres) |
+| `hand_handle [open|fist|pinch] [left|right]`, `hand_move dx dz` | the stand-in hand 5 cm behind a grip of the push handle; move it. Hand push: `hand_handle open`, `hand_handle fist`, `hand_move 0 -0.5`, `hand_handle open` (or `hand off`) |
 | `replace`, `bring`, `place_here`, `place_cancel`, `mute`, `recall` | the new console keys |
 | `place [x z yawDeg]` | place the chair ahead of the head, or at a Stage floor point |
 | `place_ahead m [side]` | where `place` / `state Sxx` land the chair from now on (default 1.2 m ahead, 0 sideways). On the emulator room `place_ahead 1.7 -0.3` is free floor in front of the camera after `tools/shoot_all.sh` moved it 1.4 m back; 1.2 m puts the chair under the viewer's nose and on the platform edge |
@@ -190,7 +206,8 @@ first often shows the previous frame).
 Log tag `AccessCheck`: `STATE Sxx`, `PLANES`, `MESH`, `TAP`, `DRAG`, `PLACE`, `CHAIR mode`, `PUSH`, `BUMP start|end`,
 `SCUFF add`, `TURN`, `CLEARFLOOR`, `DOOR`, `SNAP`, `PIN add`, `VIEW`, `HINT`, `COACH`, `REPORT saved`, `CLEAR`,
 `FOLLOW`, `TRACK`, `CMD`, `DUMP`, `POSE`, `PANEL`, `OBSTACLE`, `FPS`; v0.1.1: `PLACE start|trigger|cancel`, `AIM floor=`,
-`DRAG start|end by=trigger`, `BRING`, `RECALL`, `SOUND muted=`, `FLOOR virtual|real`, `POINTER`.
+`BRING`, `RECALL`, `SOUND muted=`, `FLOOR virtual|real`, `POINTER`; v0.1.2: `HOLD start|join|end by=ctl-l|ctl-r|hand-l|hand-r`,
+`PUSH start by=` / `PUSH end by=release`, `TRACK hands support=`, `HAND`.
 
 ## Build
 

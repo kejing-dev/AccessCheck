@@ -189,7 +189,7 @@
     <string name="action_mute">Mute sounds</string>
     <string name="action_unmute">Turn sounds on</string>
     <string name="action_recall">Bring the panel back</string>
-    <string name="stick_drag_hint">Stick turns · hold trigger on chair to drag</string>
+    <string name="stick_drag_hint">Stick turns · hold trigger/grip or grab to push</string>
     <string name="hint_aim_floor">Point at the floor (within 6 m)</string>
     <string name="hint_virtual_floor">No floor found: using a standard floor</string>
 </resources>

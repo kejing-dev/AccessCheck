@@ -198,6 +198,12 @@ sealed interface AccessEvent {
 
     data class DragEnded(val pose: ChairPose) : AccessEvent
 
+    /** v0.1.2: a controller's trigger / grip or a closed hand took hold of the chair ([by] = the first grip): pushing starts. */
+    data class HoldStarted(val by: String) : AccessEvent
+
+    /** The last grip let go with the chair at [pose]: it is parked there. */
+    data class HoldEnded(val pose: ChairPose) : AccessEvent
+
     /** Placing: the trigger put the ghost down at [pose]. */
     data class PlaceConfirmed(val pose: ChairPose) : AccessEvent
 

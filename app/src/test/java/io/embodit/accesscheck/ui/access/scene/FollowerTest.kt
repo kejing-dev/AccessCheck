@@ -62,4 +62,25 @@ class FollowerTest {
         // turning away 90 degrees is
         assertTrue(Follower.levelAngleDeg(to, forward(-1.5708f, 0f), 0f) > 45f)
     }
+
+    /** The panel's front (+Z turned by [yaw]) as a level unit vector. */
+    private fun front(yaw: Float) = Vec3(kotlin.math.sin(yaw), 0f, kotlin.math.cos(yaw))
+
+    @Test
+    fun restingPanelFacesTheHeadWhereverItStands() {
+        // v0.1.2: "UI panels should follow the head and face it"
+        val panel = Follower.designed(eye, 0.4f, offset)
+        // the designed spot faces the head it was designed for, along the heading
+        val yaw0 = Follower.facingYaw(panel, eye, 0f)
+        val to0 = Vec3(eye.x - panel.x, 0f, eye.z - panel.z).normalized()
+        assertEquals(1f, front(yaw0).dot(to0), 1e-4f)
+        // the head steps 0.5 m sideways and 0.3 m back; the resting panel turns to it about the vertical only
+        for (moved in listOf(eye + Vec3(0.5f, 0f, 0.3f), eye + Vec3(-0.4f, -0.3f, 0.1f), eye + Vec3(0f, 0.4f, 0.6f))) {
+            val yaw = Follower.facingYaw(panel, moved, yaw0)
+            val to = Vec3(moved.x - panel.x, 0f, moved.z - panel.z).normalized()
+            assertEquals(1f, front(yaw).dot(to), 1e-4f)
+        }
+        // straight above or below it there is no level direction: the rest yaw stays
+        assertEquals(0.7f, Follower.facingYaw(panel, Vec3(panel.x, 2.0f, panel.z), 0.7f), 0f)
+    }
 }

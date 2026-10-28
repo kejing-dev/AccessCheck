@@ -2,6 +2,7 @@ package io.embodit.accesscheck.platform.input
 
 import com.pico.spatial.tracking.DataProvider
 import com.pico.spatial.tracking.controller.ControllerActionData
+import com.pico.spatial.tracking.controller.ControllerPose
 import com.pico.spatial.tracking.controller.ControllerTrackingProvider
 import io.embodit.accesscheck.domain.model.PointerRay
 import io.embodit.accesscheck.domain.model.Quat4
@@ -19,6 +20,9 @@ data class ControllerSample(
     /** Thumbstick x (-1 left .. 1 right) of the aiming controller. */
     val stickX: Float,
     val right: Boolean,
+    /** Grip 0..1 and its pressed flag (v0.1.2: trigger or grip takes hold of the chair). */
+    val grip: Float = 0f,
+    val gripPressed: Boolean = false,
 )
 
 /**
@@ -38,6 +42,10 @@ class ControllerInput {
     private val leftPressed = AtomicBoolean(false)
     private val rightStick = AtomicInteger(0)
     private val leftStick = AtomicInteger(0)
+    private val rightGrip = AtomicInteger(0)
+    private val leftGrip = AtomicInteger(0)
+    private val rightGripPressed = AtomicBoolean(false)
+    private val leftGripPressed = AtomicBoolean(false)
     private var useRight = true
     private var lastSupport: DataProvider.SupportState? = null
 
@@ -49,6 +57,10 @@ class ControllerInput {
             leftPressed.set(action.left.triggerPressed)
             rightStick.set(java.lang.Float.floatToIntBits(runCatching { action.right.thumbstickValue.x }.getOrDefault(0f)))
             leftStick.set(java.lang.Float.floatToIntBits(runCatching { action.left.thumbstickValue.x }.getOrDefault(0f)))
+            rightGrip.set(java.lang.Float.floatToIntBits(action.right.gripValue))
+            rightGripPressed.set(action.right.gripPressed)
+            leftGrip.set(java.lang.Float.floatToIntBits(action.left.gripValue))
+            leftGripPressed.set(action.left.gripPressed)
         }
 
     fun start() {
@@ -85,22 +97,34 @@ class ControllerInput {
         val leftDown = leftPressed.get()
         if (useRight && (leftV > SWITCH_AT || leftDown) && rightV < REST_BELOW && !rightDown) useRight = false
         if (!useRight && (rightV > SWITCH_AT || rightDown) && leftV < REST_BELOW && !leftDown) useRight = true
-        val right = data.right
-        val left = data.left
-        val pickRight = if (useRight) right != null else left == null
-        val pose = (if (pickRight) right else left) ?: return null
+        val pickRight = if (useRight) data.right != null else data.left == null
+        return build(if (pickRight) data.right else data.left, pickRight)
+    }
+
+    /** Both controllers with their own buttons (v0.1.2: either or both may hold the push handle). */
+    fun both(): List<ControllerSample> {
+        val p = provider ?: return emptyList()
+        if (runCatching { p.supportState }.getOrNull() != DataProvider.SupportState.SUPPORTED) return emptyList()
+        val data = runCatching { p.latestData }.getOrNull() ?: return emptyList()
+        return listOfNotNull(build(data.left, false), build(data.right, true))
+    }
+
+    private fun build(pose: ControllerPose?, right: Boolean): ControllerSample? {
+        pose ?: return null
         val position = Vec3(pose.position.x, pose.position.y, pose.position.z)
         val rotation = Quat4(pose.rotation.x, pose.rotation.y, pose.rotation.z, pose.rotation.w)
         if (!position.isFinite()) return null
         val forward = rotation.rotate(Vec3.AHEAD)
         if (!forward.isFinite() || forward.length < 0.5f) return null
-        val stick = java.lang.Float.intBitsToFloat((if (pickRight) rightStick else leftStick).get())
+        fun f(a: AtomicInteger) = java.lang.Float.intBitsToFloat(a.get())
         return ControllerSample(
             ray = PointerRay(position, forward.normalized()),
-            trigger = if (pickRight) rightV else leftV,
-            pressed = if (pickRight) rightDown else leftDown,
-            stickX = stick,
-            right = pickRight,
+            trigger = f(if (right) rightValue else leftValue),
+            pressed = (if (right) rightPressed else leftPressed).get(),
+            stickX = f(if (right) rightStick else leftStick),
+            right = right,
+            grip = f(if (right) rightGrip else leftGrip),
+            gripPressed = (if (right) rightGripPressed else leftGripPressed).get(),
         )
     }
 
