@@ -112,7 +112,7 @@
     <string name="dialog_unavailable">Can\'t run right now: it needs Full Space and permission to sense the room. Open it again from the app list.</string>
 
     <!-- menu -->
-    <string name="menu_chair">Wheelchair</string>
+    <string name="menu_chair">Chair</string>
     <string name="menu_language">Language</string>
     <string name="menu_units">Units</string>
     <string name="menu_clear">Clear scuffs and pins</string>
@@ -128,6 +128,10 @@
     <string name="report_chair">Wheelchair</string>
     <string name="report_turn">Turning</string>
     <string name="report_clear">Room to park</string>
+    <string name="report_row">%1$s (%2$s): %3$s</string>
+    <string name="report_paren">(%1$s)</string>
+    <string name="report_paren_after">%1$s (%2$s)</string>
+    <string name="report_label">%1$s: %2$s</string>
     <string name="report_clear_note">Only says a chair can stand here, not that a side transfer works (ADA toilet transfer needs 152.5 × 142 cm)</string>
     <string name="report_doors">Doors</string>
     <string name="report_scuffs">Scuffs</string>

@@ -70,9 +70,9 @@ APK 在 [Releases](https://github.com/kejing-dev/AccessCheck/releases) 页面下
 
 1. ~~推着轮椅走时体检台落在车背后面，「停下」点不到~~ —— v0.1.1 已改：体检台挂到推把外侧。
 2. ~~「撞到了」提示和撞击声不出~~ —— v0.1.1 已修。
-3. 更多菜单里英文「Wheelchair」被截成「Wheelchai」。
+3. ~~更多菜单里英文「Wheelchair」被截成「Wheelchai」~~ —— v0.1.1 已改：英文标签改为「Chair」。
 4. ~~转一下后不吸附门前黄框~~ —— v0.1.1 已修（吸附角度 16°）。
-5. 英文报告里夹着中文全角括号和冒号。
+5. ~~英文报告里夹着中文全角括号和冒号~~ —— v0.1.1 已修。
 6. 仅调试路径：直接跳到「撞了」状态撞不上墙；调试眼高覆盖会把体检台挪走，关掉后读数错到重开。真实路径正常。
 
 还没在头显上验过：手柄射线放轮椅 / 扳机拖动（模拟器没有手柄，用调试广播模拟射线验证）、手柄摇杆转轮椅、真走路推轮椅的手感、真坐下 / 蹲下的眼高、马桶台盆柜这类靠空间网格识别的障碍准不准、厘米级碰撞、门宽自动读数和实际净宽差多少、权限流程、PICO 文件管理器能不能看到报告。
@@ -121,9 +121,9 @@ See the table above: a bump, a turning circle that is short, a door that passes 
 
 1. ~~Console behind the backrest while pushing~~ — fixed in v0.1.1 (console beside the push handle).
 2. ~~"Bumped" hint and sound never appear~~ — fixed in v0.1.1.
-3. "Wheelchair" is cut to "Wheelchai" in the English More menu.
+3. ~~"Wheelchair" is cut to "Wheelchai" in the English More menu~~ — fixed in v0.1.1 (the label now reads "Chair").
 4. ~~No door snap after one 15° turn~~ — fixed in v0.1.1 (16° snap angle).
-5. The English report contains full-width Chinese brackets and colons.
+5. ~~The English report contains full-width Chinese brackets and colons~~ — fixed in v0.1.1.
 6. Debug paths only: jumping straight to the "bumped" state does not hit the wall; the debug eye-height override moves the console away and leaves a wrong reading until restart. Real paths are fine.
 
 Not yet verified on a headset: placing with the controller ray and trigger-dragging (the emulator has no controller; verified with a debug stand-in ray), thumbstick turning, the feel of pushing by walking, real seated / crouching eye heights, how well the spatial mesh catches toilets and basin cabinets, centimetre-level bumps, automatic door width versus the real clear width, the permission flow, and whether the PICO file manager shows the report.

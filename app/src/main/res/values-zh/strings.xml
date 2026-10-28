@@ -115,6 +115,10 @@
     <string name="report_chair">轮椅</string>
     <string name="report_turn">转一圈</string>
     <string name="report_clear">停得下吗</string>
+    <string name="report_row">%1$s（%2$s）：%3$s</string>
+    <string name="report_paren">（%1$s）</string>
+    <string name="report_paren_after">%1$s（%2$s）</string>
+    <string name="report_label">%1$s：%2$s</string>
     <string name="report_clear_note">只说明停得下一台轮椅，不代表能侧向转移（ADA 马桶侧转移需 152.5 × 142 cm）</string>
     <string name="report_doors">门</string>
     <string name="report_scuffs">撞痕</string>

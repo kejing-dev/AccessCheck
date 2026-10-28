@@ -20,18 +20,18 @@ object ReportText {
         for (t in s.turnRecords) {
             val mark = if (t.pass) "[✓]" else "[✗]"
             val body = if (t.pass) res.getString(R.string.report_turn_pass) else res.getString(R.string.report_turn_fail, Fmt.len(res, u, t.shortCm), Fmt.obstacle(res, t.blocker ?: io.embodit.accesscheck.domain.model.ObstacleName.WALL))
-            sb.appendLine("$mark ${res.getString(R.string.report_turn)}（${Fmt.location(res, u, t.where)}）：$body")
+            sb.appendLine("$mark " + res.getString(R.string.report_row, res.getString(R.string.report_turn), Fmt.location(res, u, t.where), body))
         }
         for (c in s.clearRecords) {
-            sb.appendLine("[!] ${res.getString(R.string.report_clear)}（${Fmt.location(res, u, c.where)}）：${res.getString(R.string.report_clear_row, Fmt.len(res, u, c.shortCm), Fmt.obstacle(res, c.blocker))}")
-            sb.appendLine("    （${res.getString(R.string.report_clear_note)}）")
+            sb.appendLine("[!] " + res.getString(R.string.report_row, res.getString(R.string.report_clear), Fmt.location(res, u, c.where), res.getString(R.string.report_clear_row, Fmt.len(res, u, c.shortCm), Fmt.obstacle(res, c.blocker))))
+            sb.appendLine("    " + res.getString(R.string.report_paren, res.getString(R.string.report_clear_note)))
         }
         for (d in s.doors) {
             if (d.entry.measuredCm == null && d.entry.threshold == ThresholdPick.UNSET && d.slot < 0) continue
             val v = d.verdict
             val mark = when (v.overall) { Verdict.PASS -> "[✓]"; Verdict.TO_MEASURE -> "[?]"; else -> "[✗]" }
-            val width = (if (v.approx) res.getString(R.string.door_about, Fmt.len(res, u, v.widthCm)) else Fmt.len(res, u, v.widthCm)) + "（" + res.getString(if (v.approx) R.string.door_not_measured else R.string.door_measured) + "）"
-            sb.appendLine("$mark ${res.getString(R.string.door_title, d.entry.info.index)}：$width · ${res.getString(R.string.door_threshold)} ${Fmt.thresholdShort(res, d.entry.threshold)} · ${Fmt.verdict(res, v.overall)}")
+            val width = res.getString(R.string.report_paren_after, if (v.approx) res.getString(R.string.door_about, Fmt.len(res, u, v.widthCm)) else Fmt.len(res, u, v.widthCm), res.getString(if (v.approx) R.string.door_not_measured else R.string.door_measured))
+            sb.appendLine("$mark " + res.getString(R.string.report_label, res.getString(R.string.door_title, d.entry.info.index), width) + " · ${res.getString(R.string.door_threshold)} ${Fmt.thresholdShort(res, d.entry.threshold)} · " + Fmt.verdict(res, v.overall))
         }
         if (s.scuffs.isNotEmpty()) {
             sb.appendLine("[!] ${res.getString(R.string.report_scuffs)} ${s.scuffs.size}:")
