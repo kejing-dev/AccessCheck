@@ -6,14 +6,14 @@
 
 **Push a life-size virtual wheelchair around your own bathroom: whatever it bumps turns red and leaves a scuff, the turning circle and the door width / threshold light up green or red on the spot, and you save a report at the end.**
 
-PICO OS 6 · PICO Spatial SDK 6.1.9 · Kotlin / SpatialUI · package `io.embodit.accesscheck` · v0.1.2 (pre-release / 预发布)
+PICO OS 6 · PICO Spatial SDK 6.1.9 · Kotlin / SpatialUI · package `io.embodit.accesscheck` · v0.1.2
 
-> **v0.1.2：按真机反馈改了放好后的推动（按住扳机 / 握把或手握推把推着走）和面板朝向，QA 待复核；真机未全面验证（v0.1.2: pushing after placing reworked after headset feedback — hold trigger / grip or grab the handle; QA re-check pending; not fully verified on a headset）。**
+> **v0.1.2 正式发布：按两轮真机反馈改了摆放（手柄射线）、推动（按住扳机 / 握把或手握推把）、面板跟头朝向、配色对比度和轮椅尺寸；用户已在头显上看过，发布前补跑 QA 门禁通过（v0.1.2 release: placing, held pushing, head-facing panels, contrast and chair size reworked after two rounds of headset feedback; checked by the user on a headset; QA gate re-run before release）。**
 
-![封面：停着的轮椅外一整圈绿色 1.5 米转身圆，读数牌「转得开 ✓」，上方是体检台](docs/cover-S8-turn-ok.jpg)
+![海报：无障碍体检，停着的 1:1 轮椅和转身圆，左边是体检台](docs/poster.jpg)
 
-> 截图和演示视频来自原生模拟器（PICO Emulator 6.1），由调试广播和模拟器鼠标（= 视线 + 捏合）驱动；**非真实手势录像**，演示视频无声。模拟器系统语言是美式英文，所以截图里界面是英文、读数单位是英寸。
-> Screenshots and the demo video were taken on the native PICO emulator, driven by debug broadcasts and the emulator mouse (standing in for gaze + pinch); **not a recording of real hand gestures**; the demo video has no sound. The emulator's system language is US English, so the UI is in English and readings are in inches.
+> 截图和演示视频来自原生模拟器（PICO Emulator 6.1），由调试广播和模拟器鼠标（= 视线 + 捏合）驱动；**非真实手势录像**，演示视频无声。v0.1.2 的截图和视频是应用的简体中文界面（模拟器图形设为高清：渲染 2560、4 倍抗锯齿）。
+> Screenshots and the demo video were taken on the native PICO emulator, driven by debug broadcasts and the emulator mouse (standing in for gaze + pinch); **not a recording of real hand gestures**; the demo video has no sound. The v0.1.2 screenshots and video show the app's Simplified Chinese UI (emulator graphics set to High Definition: 2560 render width, 4x MSAA).
 
 ---
 
@@ -43,14 +43,25 @@ APK 在 [Releases](https://github.com/kejing-dev/AccessCheck/releases) 页面下
 
 ### 截图
 
-| | |
-|---|---|
-| ![推着走撞到障碍：车架和脚印变红](docs/S5-bump.jpg) | ![转不开：靠柜子一侧红段和红箭头](docs/S9-turn-short.jpg) |
-| 撞到了 — 车架和脚印变红，墙上留撞痕 | 转不开 — 靠柜子一侧标红，给出差多少 |
-| ![门过得去：门框两侧绿色竖条](docs/S10-door-ok.jpg) | ![门过不去：门框两侧红色竖条](docs/S12-door-no.jpg) |
-| 门 · 过得去 — 绿色竖条 + 门牌 | 门 · 过不去 — 红色竖条 |
-| ![门前吸附：轮椅吸到门前黄框](docs/door-snapped.jpg) | ![报告卡：轮椅、转一圈、门、撞痕、钉子](docs/S18-report.jpg) |
-| 门前吸附 — 松手吸到门前黄框（位置和朝向） | 报告 — 存成文字文件到「下载/AccessCheck」 |
+v0.1.2（简体中文界面）：
+
+![手柄指哪，轮椅放哪](docs/shot-01.jpg)
+
+![握住推把，推着走](docs/shot-02.jpg)
+
+![原地转一圈](docs/shot-03.jpg)
+
+![门够不够宽](docs/shot-04.jpg)
+
+![过不去，一眼看出](docs/shot-05.jpg)
+
+![换个高度看](docs/shot-06.jpg)
+
+![轮椅尺寸可调](docs/shot-07.jpg)
+
+![一份体检报告](docs/shot-08.jpg)
+
+演示视频（67 秒，2560×1440，无声，非真实手势录像）：见 [Release v0.1.2](https://github.com/kejing-dev/AccessCheck/releases/tag/v0.1.2) 附件 `video-01.mp4`。
 
 启动器图标：
 
@@ -85,7 +96,7 @@ APK 在 [Releases](https://github.com/kejing-dev/AccessCheck/releases) 页面下
 5. ~~英文报告里夹着中文全角括号和冒号~~ —— v0.1.1 已修。
 6. 仅调试路径：直接跳到「撞了」状态撞不上墙；调试眼高覆盖会把体检台挪走，关掉后读数错到重开。真实路径正常。
 
-还没在头显上验过：手柄射线放轮椅、按住扳机 / 握把推轮椅、手握推把推轮椅（模拟器没有手柄和手部追踪，用调试广播模拟验证）、手柄摇杆转轮椅、真走路推轮椅的手感、真坐下 / 蹲下的眼高、马桶台盆柜这类靠空间网格识别的障碍准不准、厘米级碰撞、门宽自动读数和实际净宽差多少、权限流程、PICO 文件管理器能不能看到报告。
+用户已在头显上看过 v0.1.2（2026-10-27）；以下细项还没逐条在头显上量过：手柄射线放轮椅、按住扳机 / 握把推轮椅、手握推把推轮椅（模拟器没有手柄和手部追踪，用调试广播模拟验证）、手柄摇杆转轮椅、真走路推轮椅的手感、真坐下 / 蹲下的眼高、马桶台盆柜这类靠空间网格识别的障碍准不准、厘米级碰撞、门宽自动读数和实际净宽差多少、权限流程、PICO 文件管理器能不能看到报告。
 
 ---
 
@@ -115,7 +126,7 @@ Download the APK from the [Releases](https://github.com/kejing-dev/AccessCheck/r
 
 ### Screenshots
 
-See the table above: a bump, a turning circle that is short, a door that passes and one that does not, snapping at a door, and the report card.
+See the eight v0.1.2 images above (Chinese UI): placing with the controller ray, held pushing, the turning circle, a door that passes and one that does not, eye heights, the chair size menu and the report. Demo video: `video-01.mp4` on the v0.1.2 Release.
 
 ### What changed in v0.1.2 (second round of headset feedback)
 
