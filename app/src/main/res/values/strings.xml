@@ -16,10 +16,13 @@
 
     <!-- console buttons -->
     <string name="place_chair">Place wheelchair</string>
-    <string name="chair_manual">Manual 68 × 110 cm</string>
-    <string name="chair_power">Power 70 × 120 cm</string>
+    <string name="chair_label">%1$s %2$d × %3$d cm</string>
     <string name="chair_manual_short">Manual</string>
     <string name="chair_power_short">Power</string>
+    <string name="chair_child_short">Child</string>
+    <string name="size_width">Width</string>
+    <string name="size_length">Length</string>
+    <string name="size_height">Height</string>
     <string name="push">Push</string>
     <string name="park">Stop</string>
     <string name="turn">Turn around</string>
@@ -105,7 +108,7 @@
     <string name="hint_door_blocked">Too narrow: the chair won\'t fit through</string>
 
     <!-- coach -->
-    <string name="coach">Walk forward and the wheelchair follows. Anything it bumps turns red.</string>
+    <string name="coach">Push it with your hands or walk behind it. Bumps turn red.</string>
 
     <!-- dialogs -->
     <string name="dialog_clear">Clear all scuffs and pins? Turn results go too. Tape measurements stay.</string>

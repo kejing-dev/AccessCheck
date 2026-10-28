@@ -30,7 +30,12 @@ controller trigger or grip is pressed, not follow the ray's floor point; hands t
 it; panels should follow the head and face it"): the parked chair is pushed while held (GripUseCase,
 PushFollowUseCase.startHeld), the floor-point trigger drag is gone, the console no longer hangs beside the
 push handle and faces the head every frame (Follower.facingYaw), the placing ghost uses a hand's aim ray when
-no controller aims (taste profile D1: never the head unless nothing else is tracked).
+no controller aims (taste profile D1: never the head unless nothing else is tracked). Also in v0.1.2: the
+chair's size is adjustable (ChairModel = preset + width / length / height in cm, More menu sliders, remembered;
+the door pass needs the chair width + 5 cm), the colour roles were fixed after "the UI colours are off" (dark
+fills carry labelPrimaryLight, selected states the accent with ink; every text >= 4.5:1, measured in
+build/ui-audit.md), the menu opens to the right of the console, the console slides aside before it lifts, and
+the chair plate floats over the chair's front end.
 
 ## Structure
 
@@ -140,14 +145,17 @@ dragging, thumbstick) it owns the pose and reports it at 10 Hz; otherwise the Vi
 
 Pooled attachment panels, fixed sizes: `console` 400 x 496 at 0.75 (fixed glass, rows anchored at the
 top; v0.1.1 adds the mute / panel-back keys in the title row and the "Bring here / Place again" row),
-`menu` 320 x 320 above it and `report` 440 x 560 beside it. The console family follows lazily 18° left,
+`menu` 320 x 464 (v0.1.2: chair size sliders) and `report` 440 x 560 beside it on the right, tops aligned
+(never open together; v0.1.1 had the menu above the console, too tall now for D10). The console family follows lazily 18° left,
 18° down (20° while pushing), 0.6 m, leaning back 12°, in the head's level frame (yaw only, v0.1.1:
 looking down at a threshold no longer drops it under the body), and wherever it rests it turns to face the
 head's current position every frame (v0.1.2; v0.1.1 hung it beside the push handle while pushing, design v2
-q1-1, dropped at the user's "panels follow the head and face it"). It rises 0.15 m above the chair's box
-whenever the chair would hold or hide it. A pushed / waiting / placing chair takes no taps (the pointer passes through to the console).
-`hint` 480 x 64 sits on top of the console (or of the menu above it) at 0.75: below the view line.
-`chairPlate` 280 x 96 above the push handle (hidden while pushing); `doorPlateA` / `doorPlateB` 300 x 112
+q1-1, dropped at the user's "panels follow the head and face it"). When the chair would hold or hide it, it
+rises to 0.15 m above the chair's box, its top kept 8 cm under the eye, and what that capped lift cannot clear
+a slide of up to 0.3 m to the viewer's left does (ConsoleLiftUseCase.sideShift); it faces the head from there. A pushed / waiting / placing chair takes no taps (the pointer passes through to the console).
+`hint` 480 x 64 sits on top of the console at 0.75: below the view line.
+`chairPlate` 280 x 96 over the chair's front end (v0.1.2; over the push handle it hung in the face of whoever
+stood behind the chair) (hidden while pushing); `doorPlateA` / `doorPlateB` 300 x 112
 and `doorCard` 300 x 320 on the door's centre line 20 cm under the top edge; `pinTag` 360 x 72 above a
 fresh pin; `dialog` 440 x 240 1.0 m away, 8° right and 10° down in the level frame (clear of the console),
 placed once the head pose is known; `coach` 360 x 96 ahead of the chair. Plates, hint and report use
@@ -170,6 +178,7 @@ adb -s <serial> shell "am broadcast -a io.embodit.accesscheck.DEBUG -p io.embodi
 | `aim_ahead m [side]` | the same, at the floor point m ahead of the head (level) and side to its right |
 | `ray ox oy oz dx dy dz`, `ray off` | stand-in controller ray in Stage metres (`ray off` = the real controller) |
 | `trigger 1|0`, `stick x` | stand-in trigger and thumbstick x (-1..1; `stick 0` releases) |
+| `chair manual|power|child`, `chair_size w l h` | chair preset / its size in cm (v0.1.2; clamped to 55-80 / 90-130 / 80-110) |
 | `grip 1|0`, `move_ray dx dz` | stand-in grip; slide the stand-in controller level. Held push: `aim` at the chair, `trigger 1` (or `grip 1`), `move_ray 0 -0.5`, `trigger 0` |
 | `hand x y z [open|fist|pinch] [left|right]`, `hand off` | stand-in tracked hand (palm, Stage metres) |
 | `hand_handle [open|fist|pinch] [left|right]`, `hand_move dx dz` | the stand-in hand 5 cm behind a grip of the push handle; move it. Hand push: `hand_handle open`, `hand_handle fist`, `hand_move 0 -0.5`, `hand_handle open` (or `hand off`) |

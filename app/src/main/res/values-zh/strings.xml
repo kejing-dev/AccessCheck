@@ -14,10 +14,13 @@
     <string name="status_lost">定位丢失</string>
 
     <string name="place_chair">放轮椅</string>
-    <string name="chair_manual">手动 68×110 cm</string>
-    <string name="chair_power">电动 70×120 cm</string>
+    <string name="chair_label">%1$s %2$d×%3$d cm</string>
     <string name="chair_manual_short">手动</string>
     <string name="chair_power_short">电动</string>
+    <string name="chair_child_short">儿童</string>
+    <string name="size_width">宽</string>
+    <string name="size_length">长</string>
+    <string name="size_height">高</string>
     <string name="push">推着走</string>
     <string name="park">停下</string>
     <string name="turn">转一圈</string>
@@ -95,7 +98,7 @@
     <string name="hint_threshold_catch">门槛 %1$s · 前轮会卡</string>
     <string name="hint_door_blocked">过不去：这道门太窄</string>
 
-    <string name="coach">往前走，轮椅跟着你。撞到哪儿，哪儿变红。</string>
+    <string name="coach">手推或在后面走，轮椅就跟着走。撞到哪儿就变红。</string>
 
     <string name="dialog_clear">清除全部撞痕和钉子？转一圈的记录也会清掉。自己量过的门宽会留着。</string>
     <string name="dialog_unavailable">现在用不了：需要在全空间里运行，并允许识别房间。请从应用列表重新打开。</string>

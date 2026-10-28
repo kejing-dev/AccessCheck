@@ -104,19 +104,57 @@ object AccessRules {
     const val CLEAR_FLOOR_RECORD_MS = 2000L
 }
 
-/** The two wheelchairs of the design (`assumptions`): the footprint sizes are the truth. */
-enum class ChairModel(val tag: String, val widthM: Float, val lengthM: Float, val heightM: Float, val handleY: Float, val rearWheelR: Float) {
-    MANUAL("manual", 0.68f, 1.10f, 0.92f, 0.92f, 0.30f),
-    POWER("power", 0.70f, 1.20f, 1.00f, 1.00f, 0.22f);
+/** The wheelchair presets (design `assumptions`, plus a child chair in v0.1.2): the footprint sizes are the truth. */
+enum class ChairPreset(val tag: String, val widthCm: Int, val lengthCm: Int, val heightCm: Int, val rearWheelR: Float) {
+    MANUAL("manual", 68, 110, 92, 0.30f),
+    POWER("power", 70, 120, 100, 0.22f),
+    CHILD("child", 56, 90, 85, 0.25f),
+}
 
-    val widthCm: Int
-        get() = Math.round(widthM * 100f)
+/**
+ * The wheelchair in use: a preset's look at its own size (v0.1.2, the user: "the wheelchair's size should be
+ * adjustable in the settings"). Width / length / height are whole centimetres within [WIDTH_CM] / [LENGTH_CM] /
+ * [HEIGHT_CM]; every check (footprint, bumps, doors, turning, clear floor) reads them from here.
+ */
+data class ChairModel(val preset: ChairPreset, val widthCm: Int, val lengthCm: Int, val heightCm: Int) {
+    val tag: String
+        get() = preset.tag
 
-    val lengthCm: Int
-        get() = Math.round(lengthM * 100f)
+    val widthM: Float
+        get() = widthCm / 100f
+
+    val lengthM: Float
+        get() = lengthCm / 100f
+
+    val heightM: Float
+        get() = heightCm / 100f
+
+    /** The push handle tops the backrest. */
+    val handleY: Float
+        get() = heightM
+
+    val rearWheelR: Float
+        get() = preset.rearWheelR
+
+    /** True when the size differs from the preset's. */
+    val resized: Boolean
+        get() = widthCm != preset.widthCm || lengthCm != preset.lengthCm || heightCm != preset.heightCm
+
+    /** This chair at another size, each side clamped to its range. */
+    fun sized(widthCm: Int = this.widthCm, lengthCm: Int = this.lengthCm, heightCm: Int = this.heightCm): ChairModel =
+        copy(widthCm = widthCm.coerceIn(WIDTH_CM), lengthCm = lengthCm.coerceIn(LENGTH_CM), heightCm = heightCm.coerceIn(HEIGHT_CM))
 
     companion object {
-        fun fromTag(tag: String?): ChairModel = entries.firstOrNull { it.tag == tag } ?: MANUAL
+        val WIDTH_CM = 55..80
+        val LENGTH_CM = 90..130
+        val HEIGHT_CM = 80..110
+
+        fun of(preset: ChairPreset): ChairModel = ChairModel(preset, preset.widthCm, preset.lengthCm, preset.heightCm)
+
+        val MANUAL = of(ChairPreset.MANUAL)
+        val POWER = of(ChairPreset.POWER)
+
+        fun fromTag(tag: String?): ChairModel = of(ChairPreset.entries.firstOrNull { it.tag == tag } ?: ChairPreset.MANUAL)
     }
 }
 

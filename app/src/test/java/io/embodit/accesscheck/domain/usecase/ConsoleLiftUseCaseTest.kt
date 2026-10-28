@@ -38,4 +38,27 @@ class ConsoleLiftUseCaseTest {
         val far = ChairPose(V2(3f, -3f), 0f)
         assertEquals(0.5f, rule.liftedY(Vec3(0f, 0.5f, -0.6f), hh, far, model, 0f, head), 1e-6f)
     }
+
+    @Test
+    fun theLiftStopsUnderTheEyeAndAShortSlideClearsTheRest() {
+        // v0.1.2: the lift stops with the top 8 cm under the eye
+        val low = Vec3(0f, 1.2f, 0f)
+        val cap = rule.maxCenterY(low, hh)
+        assertEquals(1.2f - 0.08f - hh, cap, 1e-6f)
+        val hidden = Vec3(-0.157f, 1.2f - 0.318f, -0.484f)
+        assertEquals(cap, minOf(rule.liftedY(hidden, hh, pose, model, 0f, low), maxOf(hidden.y, cap)), 1e-6f)
+        val left = Vec3(-1f, 0f, 0f)
+        // that low eye right behind the handle: 0.3 m of slide is not enough (the scene then takes the chair's taps away)
+        assertEquals(ConsoleLiftUseCase.MAX_SHIFT_M, rule.sideShift(Vec3(hidden.x, cap, hidden.z), hh, left, pose, model, 0f, low), 0f)
+        // standing (1.6 m), the console just inside the chair's left edge: a short slide clears it
+        val head = Vec3(0f, 1.6f, 0f)
+        val panel = Vec3(-0.30f, 1.0f, -0.6f)
+        assertTrue(rule.liftedY(panel, hh, pose, model, 0f, head) > panel.y)
+        val d = rule.sideShift(panel, hh, left, pose, model, 0f, head)
+        assertTrue("shift=$d", d > 0f && d < ConsoleLiftUseCase.MAX_SHIFT_M)
+        val moved = panel + left * d
+        assertEquals(moved.y, rule.liftedY(moved, hh, pose, model, 0f, head), 1e-6f)
+        // a console already clear does not move
+        assertEquals(0f, rule.sideShift(Vec3(-0.6f, 1.4f, -0.3f), hh, left, pose, model, 0f, head), 0f)
+    }
 }

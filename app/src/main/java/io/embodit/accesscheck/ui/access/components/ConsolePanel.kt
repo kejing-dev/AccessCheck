@@ -34,7 +34,6 @@ import com.pico.spatial.ui.design.Text
 import com.pico.spatial.ui.foundation.material.backgroundMaterial
 import com.pico.spatial.ui.platform.Material
 import io.embodit.accesscheck.R
-import io.embodit.accesscheck.domain.model.ChairModel
 import io.embodit.accesscheck.domain.model.ViewHeight
 import io.embodit.accesscheck.ui.access.AccessEvent
 import io.embodit.accesscheck.ui.access.AccessUiState
@@ -80,11 +79,12 @@ internal fun ConsolePanel(state: AccessUiState, filled: Boolean, onEvent: (Acces
                         name = "console_place",
                         iconRes = R.drawable.ic_wheelchair,
                         text = rs(R.string.place_chair),
-                        sub = rs(if (state.chair == ChairModel.MANUAL) R.string.chair_manual else R.string.chair_power),
+                        sub = chairText(state.chair),
                         enabled = ready && (state.hasFloor || state.virtualFloor),
                         busy = state.phase == Phase.STARTING || state.phase == Phase.SCANNING,
+                        // a dark fill carries the light label (role pair fillPrimary / labelPrimaryLight; dark on it was 3.3:1)
                         container = PicoTheme.colorScheme.fillPrimary,
-                        content = PicoTheme.colorScheme.labelPrimary,
+                        content = PicoTheme.colorScheme.labelPrimaryLight,
                     ) { onEvent(AccessEvent.PlaceClicked) }
                 ChairMode.PLACING ->
                     BigAction(
@@ -116,8 +116,9 @@ internal fun ConsolePanel(state: AccessUiState, filled: Boolean, onEvent: (Acces
                         sub = "",
                         enabled = ready,
                         busy = state.busy,
+                        // a dark fill carries the light label (role pair fillPrimary / labelPrimaryLight; dark on it was 3.3:1)
                         container = PicoTheme.colorScheme.fillPrimary,
-                        content = PicoTheme.colorScheme.labelPrimary,
+                        content = PicoTheme.colorScheme.labelPrimaryLight,
                     ) { onEvent(AccessEvent.PushClicked) }
             }
             if (state.chairMode == ChairMode.PARKED || state.chairMode == ChairMode.TURNING) {
@@ -228,8 +229,9 @@ private fun HeightSegments(state: AccessUiState, enabled: Boolean, onSelect: (Vi
                         SegmentControlDefaults.colors(
                             itemBackgroundColor = Color.Transparent,
                             itemContentColor = PicoTheme.colorScheme.labelPrimary,
-                            selectedItemBackgroundColor = PicoTheme.colorScheme.fillSecondary,
-                            selectedItemContentColor = PicoTheme.colorScheme.labelPrimary,
+                            // selected: the accent with ink, as every selected mode (design `palette.semantic`)
+                            selectedItemBackgroundColor = PicoTheme.colorScheme.interaction,
+                            selectedItemContentColor = AcColors.Ink,
                         ),
                     title = {
                         @Suppress("UNUSED_EXPRESSION") icon

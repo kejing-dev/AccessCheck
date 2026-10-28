@@ -21,7 +21,6 @@ import androidx.compose.ui.unit.dp
 import com.pico.spatial.ui.design.PicoTheme
 import com.pico.spatial.ui.design.Text
 import io.embodit.accesscheck.R
-import io.embodit.accesscheck.domain.model.ChairModel
 import io.embodit.accesscheck.domain.model.ObstacleName
 import io.embodit.accesscheck.domain.model.ThresholdPick
 import io.embodit.accesscheck.ui.access.AccessEvent
@@ -58,7 +57,7 @@ internal fun ReportPanel(state: AccessUiState, filled: Boolean, onEvent: (Access
                     Text(text = rs(R.string.report_empty), color = dim, style = PicoTheme.typography.bodyLargeMultiline, modifier = Modifier.padding(top = 24.dp).probe("report_empty"))
                 } else {
                     LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        item { Section(rs(R.string.report_chair)); Line(rs(if (state.chair == ChairModel.MANUAL) R.string.chair_manual else R.string.chair_power)) }
+                        item { Section(rs(R.string.report_chair)); Line(chairText(state.chair)) }
                         if (state.turnRecords.isNotEmpty()) item { Section(rs(R.string.report_turn)) }
                         items(state.turnRecords, key = { "t${it.id}" }) { t ->
                             val body = if (t.pass) rs(R.string.report_turn_pass) else rs(R.string.report_turn_fail, len(state.units, t.shortCm), obstacleName(t.blocker ?: ObstacleName.WALL))

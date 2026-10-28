@@ -62,6 +62,9 @@ APK 在 [Releases](https://github.com/kejing-dev/AccessCheck/releases) 页面下
 - **手势也能推**：手伸到推把上握拳（或捏合）就抓住，松开就放下，同样跟着手走；两只手一起握也行。
 - **面板跟着头、面朝头**：体检台懒跟随你的水平朝向，停在视线下方约 18°，你走到哪儿它都转过来正对你；不再挂到推把外侧。
 - 没有手柄时，摆放幽灵跟手的指向射线走（不再用头的朝向）。
+- **轮椅尺寸可调**：「更多」里选手动 / 电动 / 儿童预设，或用滑杆调宽（55–80 cm）、长（90–130 cm）、高（80–110 cm），3D 轮椅、碰撞、门宽判定、报告都跟着变，下次打开还记得。轮椅调宽后，门要够「轮椅宽 + 5 cm」才算通过。
+- **配色更清楚**：深色大按钮上改用白字白图标（原来深灰底黑字，对比度只有 3.3:1）；选中的选项一律黄底深字；滑杆轨道加深。所有文字对比度 ≥ 4.5:1。
+- 站在停着的轮椅正后方时，体检台最多抬到视线下方、再往左让开一点，不再抬到视线上方；轮椅铭牌挪到车头上方，不再挡在脸前。
 
 ### v0.1.1 改了什么（用户真机反馈后的打磨）
 
@@ -120,6 +123,9 @@ See the table above: a bump, a turning circle that is short, a door that passes 
 - **Hands too**: close a fist (or pinch) at the push handle to take hold, open to let go; it follows your hand, or both hands.
 - **Panels follow your head and face you**: the console lazily follows your heading about 18° below eye level and turns to face you wherever you stand; it no longer hangs beside the push handle.
 - Without a controller the placing ghost follows the hand's pointing ray (not where your head looks).
+- **Adjustable chair size**: in More pick the manual / power / child preset or set width (55–80 cm), length (90–130 cm) and height (80–110 cm) with sliders; the 3D chair, bumps, door verdicts and the report follow, and the size is remembered. A widened chair needs a door of its width + 5 cm to pass.
+- **Clearer colours**: white text and icons on the dark big buttons (they were black on grey, 3.3:1); every selected option is yellow with dark text; a darker slider track. All text is at least 4.5:1.
+- Standing right behind the parked chair, the console rises no higher than just under your eyes and slides a little aside; the chair's plate floats over its front end, not in your face.
 
 ### What changed in v0.1.1 (polish after headset feedback)
 

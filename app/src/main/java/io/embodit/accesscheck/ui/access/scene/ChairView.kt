@@ -6,6 +6,7 @@ import com.pico.spatial.core.ecs.resource.Material
 import com.pico.spatial.core.ecs.resource.MeshResource
 import io.embodit.accesscheck.domain.model.ChairModel
 import io.embodit.accesscheck.domain.model.ChairPose
+import io.embodit.accesscheck.domain.model.ChairPreset
 import io.embodit.accesscheck.domain.model.Quat4
 import io.embodit.accesscheck.domain.model.Vec3
 import kotlin.math.PI
@@ -117,7 +118,7 @@ internal class ChairView(private val root: Entity, private val m: SceneMaterials
             box(Vec3(0.03f, 0.03f, 0.12f), Vec3(s * 0.22f, model.handleY, hl - 0.06f), m.chairFrame, frame = true)
             box(Vec3(0.02f, model.handleY - seatY - 0.02f, 0.02f), Vec3(s * 0.22f, (model.handleY + seatY) / 2f, seatZ + 0.26f), m.chairFrame, frame = true)
         }
-        if (model == ChairModel.POWER) box(Vec3(0.50f, 0.20f, 0.50f), Vec3(0f, 0.22f, seatZ), m.chairDark)
+        if (model.preset == ChairPreset.POWER) box(Vec3(0.50f, 0.20f, 0.50f), Vec3(0f, 0.22f, seatZ), m.chairDark)
         // footprint frame: four bands, the arrow, the red face
         val band = bandMesh ?: return
         val y = 0.003f

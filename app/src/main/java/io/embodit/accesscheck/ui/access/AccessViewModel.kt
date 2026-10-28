@@ -104,6 +104,8 @@ class AccessViewModel(private val appContext: Context) : ViewModel() {
     private var aimLost = false
     private var virtualFloor = false
     private var scanJob: Job? = null
+    private var chairDraft: ChairModel? = null
+    private var resizeJob: Job? = null
     private var recallSerial = 0
     private var placeSideM = 0f
     private var hit = false
@@ -250,7 +252,12 @@ class AccessViewModel(private val appContext: Context) : ViewModel() {
             AccessEvent.ReportClicked -> toggleCard(Card.REPORT)
             AccessEvent.MoreClicked -> toggleCard(Card.MENU)
             // menu / dialog
-            is AccessEvent.ChairSelected -> changeChair(event.model)
+            is AccessEvent.ChairSelected -> {
+                resizeJob?.cancel()
+                chairDraft = null
+                changeChair(event.model)
+            }
+            is AccessEvent.ChairSized -> resizeChair(event)
             is AccessEvent.LanguageSelected -> {
                 settings = settings.copy(language = event.language)
                 store.save(settings)
@@ -675,9 +682,27 @@ class AccessViewModel(private val appContext: Context) : ViewModel() {
         store.save(settings)
         turn = null
         poseSerial++
-        AcLog.i("CHAIR model=${model.tag}")
+        AcLog.i("CHAIR model=${model.tag} size=${model.widthCm}x${model.lengthCm}x${model.heightCm}")
         reevaluateParked()
         publish()
+    }
+
+    /**
+     * A size slider moved (v0.1.2): the menu shows the new size at once; the chair, the bumps and every verdict take
+     * it once the slider rests for [RESIZE_SETTLE_MS] or is let go (each new size rebuilds the 3D chair).
+     */
+    private fun resizeChair(e: AccessEvent.ChairSized) {
+        val next = (chairDraft ?: settings.chair).sized(e.widthCm, e.lengthCm, e.heightCm)
+        chairDraft = next
+        publish()
+        resizeJob?.cancel()
+        resizeJob =
+            viewModelScope.launch {
+                if (!e.done) delay(RESIZE_SETTLE_MS)
+                chairDraft = null
+                changeChair(next)
+                publish()
+            }
     }
 
     /** Clear floor and snap target of a standing chair (design `rules.clearFloor`). */
@@ -1120,6 +1145,7 @@ class AccessViewModel(private val appContext: Context) : ViewModel() {
                 floorY = floorY,
                 planeCount = planeCount,
                 chair = settings.chair,
+                chairDraft = chairDraft,
                 chairMode = chairMode,
                 pose = pose,
                 poseSerial = poseSerial,
@@ -1543,6 +1569,7 @@ class AccessViewModel(private val appContext: Context) : ViewModel() {
 
     companion object {
         private const val NEVER = Long.MIN_VALUE
+        private const val RESIZE_SETTLE_MS = 250L
 
         private fun fmt(v: Float, decimals: Int = 2): String = String.format(Locale.US, "%.${decimals}f", v)
 

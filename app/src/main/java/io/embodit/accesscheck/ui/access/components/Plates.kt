@@ -1,7 +1,9 @@
 package io.embodit.accesscheck.ui.access.components
 
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,6 +34,7 @@ import com.pico.spatial.ui.design.SegmentControl
 import com.pico.spatial.ui.design.SegmentControlDefaults
 import com.pico.spatial.ui.design.SegmentItem
 import com.pico.spatial.ui.design.Text
+import com.pico.spatial.ui.foundation.haptic.controllerHapticFeedback
 import io.embodit.accesscheck.R
 import io.embodit.accesscheck.domain.model.ObstacleName
 import io.embodit.accesscheck.domain.model.PinTag
@@ -160,7 +164,15 @@ internal fun DoorPlate(slot: Int, state: AccessUiState, filled: Boolean, onEvent
         if (!filled) return@Box
         val d = state.doors.firstOrNull { it.slot == slot } ?: return@Box
         val onClick = { onEvent(AccessEvent.DoorPlateClicked(d.entry.info.id)) }
-        Box(modifier = Modifier.fillMaxWidth().fillMaxHeight().clickable(onClick = onClick).probe("door_plate_$slot", onClick)) {
+        val interaction = remember { MutableInteractionSource() }
+        Box(
+            modifier =
+                Modifier.fillMaxWidth()
+                    .fillMaxHeight()
+                    .clickable(interactionSource = interaction, indication = LocalIndication.current, onClick = onClick)
+                    .controllerHapticFeedback(interactionSource = interaction)
+                    .probe("door_plate_$slot", onClick)
+        ) {
             InkCard(w.toInt(), h.toInt()) {
                 Text(text = rs(R.string.door_title, d.entry.info.index), color = AcColors.White.copy(alpha = 0.66f), style = AcType.figure, maxLines = 1)
                 DoorLine(d, state)
@@ -194,7 +206,7 @@ internal fun DoorCard(state: AccessUiState, filled: Boolean, onEvent: (AccessEve
                         onClick = onClick,
                         modifier = Modifier.width(67.dp).height(KeyHeight).probe("threshold_${pick.tag}", onClick),
                         textStyle = PicoTheme.typography.labelLarge,
-                        colors = SegmentControlDefaults.colors(itemBackgroundColor = Color.Transparent, itemContentColor = AcColors.White, selectedItemBackgroundColor = AcColors.White.copy(alpha = 0.22f), selectedItemContentColor = AcColors.White),
+                        colors = SegmentControlDefaults.colors(itemBackgroundColor = Color.Transparent, itemContentColor = AcColors.White, selectedItemBackgroundColor = PicoTheme.colorScheme.interaction, selectedItemContentColor = AcColors.Ink),
                         title = {
                             // design-style: inherited-content-color SegmentItem
                             Text(text = Fmt.thresholdShort(LocalAcResources.current, pick), maxLines = 1, softWrap = false)

@@ -2,7 +2,6 @@ package io.embodit.accesscheck.ui.access.components
 
 import android.content.res.Resources
 import io.embodit.accesscheck.R
-import io.embodit.accesscheck.domain.model.ChairModel
 import io.embodit.accesscheck.domain.model.ThresholdPick
 import io.embodit.accesscheck.domain.model.Verdict
 import io.embodit.accesscheck.ui.access.AccessUiState
@@ -16,7 +15,7 @@ object ReportText {
         val u = s.units
         val sb = StringBuilder()
         sb.appendLine(res.getString(R.string.report_file_title, SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).format(date)))
-        sb.appendLine("${res.getString(R.string.report_chair)}: ${res.getString(if (s.chair == ChairModel.MANUAL) R.string.chair_manual else R.string.chair_power)}")
+        sb.appendLine("${res.getString(R.string.report_chair)}: ${Fmt.chair(res, s.chair)}")
         for (t in s.turnRecords) {
             val mark = if (t.pass) "[✓]" else "[✗]"
             val body = if (t.pass) res.getString(R.string.report_turn_pass) else res.getString(R.string.report_turn_fail, Fmt.len(res, u, t.shortCm), Fmt.obstacle(res, t.blocker ?: io.embodit.accesscheck.domain.model.ObstacleName.WALL))

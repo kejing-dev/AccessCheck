@@ -19,7 +19,8 @@ import kotlin.math.max
  *
  * The plane width of a doorway reads about 5 cm wider than the ADA clear width, so the estimate is
  * always "about" and can only say "blocked" (raw width under chair width + 5 cm) or "measure to
- * confirm". Green needs a tape measurement of at least 81.5 cm and a threshold pick of "none".
+ * confirm". Green needs a tape measurement of at least 81.5 cm (and of the chair width + 5 cm for a chair set
+ * wider than 76.5 cm, v0.1.2) and a threshold pick of "none".
  */
 class DoorUseCase {
 
@@ -40,6 +41,8 @@ class DoorUseCase {
 
     fun verdict(entry: DoorEntry, chair: ChairModel): DoorVerdict {
         val minPass = chair.widthCm + AccessRules.DOOR_MARGIN_CM
+        // a wide chair (v0.1.2: the size is adjustable) needs its own width + margin before a door counts as passing
+        val passAt = maxOf(AccessRules.DOOR_PASS_CM, minPass)
         val measured = entry.measuredCm
         val width: Verdict
         val shown: Int
@@ -47,7 +50,7 @@ class DoorUseCase {
             shown = measured
             width =
                 when {
-                    measured >= AccessRules.DOOR_PASS_CM -> Verdict.PASS
+                    measured >= passAt -> Verdict.PASS
                     measured >= minPass -> Verdict.TIGHT
                     else -> Verdict.FAIL
                 }

@@ -165,6 +165,8 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
     // the console clear of the chair
     private val liftRule = ConsoleLiftUseCase()
     private var consoleLift = 0f
+    private var consoleShift = 0f
+    private var consoleHidden = false
     private var activeHits = HashMap<String, V2>()
     private var prevCenter: V2? = null
     private var prevFront: V2? = null
@@ -352,13 +354,21 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
             lastMode = state.chairMode
         }
         chair.setShown(state.pose != null && state.chairMode != ChairMode.NONE)
-        // only a standing chair takes taps and drags: pushing, waiting or placing, the pointer passes through it (q1-1)
-        chair.setTappable(state.chairMode == ChairMode.PARKED || state.chairMode == ChairMode.DRAGGING || state.chairMode == ChairMode.TURNING)
+        syncTappable(state)
         chair.setStale(state.trackingLost)
         marks.syncScuffs(state.scuffs)
         marks.syncPins(state.pins)
         marks.syncTurn(state.turn, state.floorY)
         syncPanels(state)
+    }
+
+    /**
+     * Only a standing chair takes taps and drags: pushing, waiting or placing, the pointer passes through it (q1-1);
+     * so does a standing chair that still hides the console after its lift and slide (v0.1.2).
+     */
+    private fun syncTappable(state: AccessUiState) {
+        val standing = state.chairMode == ChairMode.PARKED || state.chairMode == ChairMode.DRAGGING || state.chairMode == ChairMode.TURNING
+        chair?.setTappable(standing && !consoleHidden)
     }
 
     private fun sceneDrives(state: AccessUiState): Boolean =
@@ -432,12 +442,15 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
         rig.onFrame(now)
         rig.stowBehind(head.view)
         val state = ui
-        val hold = panelPressed || (lastPanelPressMs != NEVER && now - lastPanelPressMs < PANEL_HOLD_MS) || state.menuOpen || state.dialog != null || state.reportOpen
+        // a press on the console holds it still; an open menu / report / dialog no longer does (v0.1.2: turning away
+        // with the menu open left the whole family behind, "panels follow the head")
+        val hold = panelPressed || (lastPanelPressMs != NEVER && now - lastPanelPressMs < PANEL_HOLD_MS)
         if (hasHead && head.position.length > 1e-3f) {
             consoleFollower.headOffset = if (state.chairMode == ChairMode.PUSHING) CONSOLE_OFFSET_PUSHING else CONSOLE_OFFSET
             consoleFollower.follow(head, planeTracker.all, planeTracker.count, now, hold)
         }
         placeConsoleFamily(state, rig, dt)
+        syncTappable(state)
         placeDialog(state, rig)
         countFrame(now)
         if (!attached) return
@@ -816,22 +829,34 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
 
     // ---- panels
     /**
-     * The console on the lazy head follow, facing the head (v0.1.2: no longer hung beside the push handle);
-     * it rises clear of the chair when the chair would hold or hide it (design `occlusionRule`).
+     * The console on the lazy head follow, facing the head (v0.1.2: no longer hung beside the push handle). When
+     * the chair would hold or hide it (design `occlusionRule`) it rises, its top kept under the eye (D10), and
+     * what that cannot clear a short slide to the viewer's left does (at most 0.3 m: it stays in view).
      */
     private fun consolePose(state: AccessUiState, dt: Float): Pair<Vec3, Float> {
         val (_, hh) = PanelSpec.halfM(PanelSpec.CONSOLE, PanelSpec.MAIN_SCALE)
         val chairPose = shownPose ?: livePose
         val follow = consoleFollower.pose
-        val pos = follow.position
+        val left = Quat4.axisAngle(Vec3.UP, follow.yaw).rotate(Vec3(-1f, 0f, 0f))
+        val k = (dt / LIFT_EASE_S).coerceIn(0f, 1f)
         // (not for the see-through ghost: the console would bob up and down as it passes under)
         if (chairPose != null && state.chairMode != ChairMode.NONE && state.chairMode != ChairMode.PLACING && !state.trackingLost) {
-            val want = liftRule.liftedY(pos, hh, chairPose, state.chair, state.floorY, head.position) - pos.y
-            consoleLift += (want - consoleLift) * (dt / LIFT_EASE_S).coerceIn(0f, 1f)
+            // lift first, its top kept under the eye; what that cannot clear, a short slide to the left does
+            val p = follow.position
+            val liftTo = minOf(liftRule.liftedY(p, hh, chairPose, state.chair, state.floorY, head.position), maxOf(p.y, liftRule.maxCenterY(head.position, hh)))
+            val shift = liftRule.sideShift(Vec3(p.x, liftTo, p.z), hh, left, chairPose, state.chair, state.floorY, head.position)
+            consoleLift += (liftTo - p.y - consoleLift) * k
+            consoleShift += (shift - consoleShift) * k
+            val end = Vec3(p.x, liftTo, p.z) + left * shift
+            consoleHidden = liftRule.liftedY(end, hh, chairPose, state.chair, state.floorY, head.position) > end.y + 1e-4f
         } else {
+            consoleHidden = false
+            consoleShift += (0f - consoleShift) * k
             consoleLift = 0f
         }
-        return Vec3(pos.x, pos.y + consoleLift, pos.z) to follow.yaw
+        val at = follow.position + left * consoleShift
+        // facing the head from where it ends up (the follow faced it from the unshifted spot)
+        return Vec3(at.x, at.y + consoleLift, at.z) to Follower.facingYaw(at, head.position, follow.yaw)
     }
 
     private fun placeConsoleFamily(state: AccessUiState, rig: PanelRig, dt: Float) {
@@ -843,19 +868,19 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
         rig[PanelSpec.CONSOLE]?.place(pose.position, rot, k)
         val (hw, hh) = PanelSpec.halfM(PanelSpec.CONSOLE, k)
         if (state.menuOpen) {
+            // beside the console on the right, tops aligned, like the report (never open together): the taller menu of
+            // v0.1.2 (chair size sliders) above the console would reach over the view line (D10)
             val (mw, mh) = PanelSpec.halfM(PanelSpec.MENU, k)
-            rig[PanelSpec.MENU]?.place(pose.position + rot.rotate(Vec3(hw - mw, hh + 0.012f + mh, 0.012f)), rot, k)
+            rig[PanelSpec.MENU]?.place(pose.position + rot.rotate(Vec3(hw + 0.03f + mw, mh - hh, 0.01f)), rot, k)
         }
         if (state.reportOpen) {
             val (rw, rh) = PanelSpec.halfM(PanelSpec.REPORT, k)
             rig[PanelSpec.REPORT]?.place(pose.position + rot.rotate(Vec3(hw + 0.03f + rw, rh - hh, 0.01f)), rot, k)
         }
         if (state.hint != null) {
-            // the hint bar sits on top of the console (or of the menu over it): below the view line, never above (D10)
+            // the hint bar sits on top of the console: below the view line, never above (D10)
             val (_, ih) = PanelSpec.halfM(PanelSpec.HINT, k)
-            var top = hh
-            if (state.menuOpen) top += 0.012f + 2f * PanelSpec.halfM(PanelSpec.MENU, k).second
-            rig[PanelSpec.HINT]?.place(pose.position + rot.rotate(Vec3(0f, top + 0.012f + ih, 0.006f)), rot, k)
+            rig[PanelSpec.HINT]?.place(pose.position + rot.rotate(Vec3(0f, hh + 0.012f + ih, 0.006f)), rot, k)
         }
     }
 
@@ -871,11 +896,12 @@ class AccessScene(private val sink: (AccessEvent) -> Unit) : AcProbe.SceneProbe 
         val marks = marks ?: return
         val pose = shownPose ?: livePose
         val k = PanelSpec.PLATE_SCALE
-        // chair plate above the push handle
+        // chair plate above the chair's front end (v0.1.2: above the push handle it hung in the face of whoever
+        // stood behind the chair, over the console)
         if (pose != null && (state.chairMode == ChairMode.PARKED || state.chairMode == ChairMode.TURNING || state.chairMode == ChairMode.DRAGGING)) {
-            val handle = pose.handle(state.chair)
+            val front = pose.center + pose.heading * (state.chair.lengthM / 2f)
             val (_, ph) = PanelSpec.halfM(PanelSpec.CHAIR_PLATE, k)
-            rig[PanelSpec.CHAIR_PLATE]?.show(Vec3(handle.x, state.floorY + state.chair.handleY + 0.25f + ph, handle.z), k)
+            rig[PanelSpec.CHAIR_PLATE]?.show(Vec3(front.x, state.floorY + state.chair.handleY + 0.25f + ph, front.z), k)
         }
         // coach bubble ahead of the chair
         if (pose != null && state.coach && state.chairMode == ChairMode.PUSHING) {

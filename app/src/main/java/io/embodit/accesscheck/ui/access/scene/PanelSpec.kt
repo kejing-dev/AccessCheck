@@ -21,7 +21,7 @@ object PanelSpec {
     val DOOR_CARD_SIZE = 300f to 320f
     val PIN_TAG_SIZE = 360f to 72f
     val REPORT_SIZE = 440f to 560f
-    val MENU_SIZE = 320f to 320f
+    val MENU_SIZE = 320f to 464f
     val HINT_SIZE = 480f to 64f
     val DIALOG_SIZE = 440f to 240f
     val COACH_SIZE = 360f to 96f

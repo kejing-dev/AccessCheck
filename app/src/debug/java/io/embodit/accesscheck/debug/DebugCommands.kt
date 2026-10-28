@@ -45,6 +45,7 @@ import java.util.Locale
  * - `aim x z`                   stand-in controller beside the head, pointing at the floor point (x, z)
  * - `aim_ahead m [side]`        same, at the floor point m ahead of the head (level) and side to its right
  * - `trigger 1|0`, `stick x`    stand-in trigger / thumbstick x (-1..1; `stick 0` releases)
+ * - `chair manual|power|child`, `chair_size w l h` (cm) the chair preset / its size (v0.1.2)
  * - `grip 1|0`, `move_ray dx dz` stand-in grip; slide the stand-in controller level (pushing it by the trigger / grip)
  * - `hand x y z [open|fist|pinch] [left|right]`, `hand off`  stand-in tracked hand (palm in Stage metres)
  * - `hand_handle [open|fist|pinch] [left|right]`, `hand_move dx dz`  the stand-in hand at the push handle; move it
@@ -170,6 +171,10 @@ internal object DebugCommands {
             "aim_ahead" -> AcLog.i(scene?.aimAhead(num(0, "m") ?: 1.5f, num(1, "side") ?: 0f) ?: NO_SCENE)
             "trigger" -> AcLog.i(scene?.setDebugPointer(null, num(0, "v") ?: if (word == "on") 1f else 0f, null) ?: NO_SCENE)
             "stick" -> AcLog.i(scene?.setDebugPointer(null, null, num(0, "x") ?: 0f) ?: NO_SCENE)
+            "chair_size" -> {
+                val c = host.uiState().chair
+                host.dispatch(AccessEvent.ChairSized(num(0, "w")?.toInt() ?: c.widthCm, num(1, "l")?.toInt() ?: c.lengthCm, num(2, "h")?.toInt() ?: c.heightCm, done = true))
+            }
             "grip" -> AcLog.i(scene?.setDebugGrip(num(0, "v") ?: if (word == "on") 1f else 0f) ?: NO_SCENE)
             "move_ray" -> AcLog.i(scene?.moveDebugPointer(num(0, "dx") ?: 0f, num(1, "dz") ?: 0f) ?: NO_SCENE)
             "hand", "hand_handle" -> {

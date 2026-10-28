@@ -4,6 +4,8 @@ import android.content.res.Resources
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import io.embodit.accesscheck.R
+import io.embodit.accesscheck.domain.model.ChairModel
+import io.embodit.accesscheck.domain.model.ChairPreset
 import io.embodit.accesscheck.domain.model.LocationName
 import io.embodit.accesscheck.domain.model.ObstacleName
 import io.embodit.accesscheck.domain.model.PinTag
@@ -21,6 +23,17 @@ object Fmt {
         else res.getString(R.string.fmt_in, half(cm / 2.54f))
 
     fun lenM(res: Resources, units: UnitPref, m: Float): String = len(res, units, (m * 100f).roundToInt())
+
+    /** The chair as "Manual 68 × 110 cm": its preset's name and its own footprint (v0.1.2: the size is adjustable). */
+    fun chair(res: Resources, c: ChairModel): String {
+        val name =
+            when (c.preset) {
+                ChairPreset.MANUAL -> R.string.chair_manual_short
+                ChairPreset.POWER -> R.string.chair_power_short
+                ChairPreset.CHILD -> R.string.chair_child_short
+            }
+        return res.getString(R.string.chair_label, res.getString(name), c.widthCm, c.lengthCm)
+    }
 
     /** A distance in metres, one decimal (feet when in inches). */
     fun dist(res: Resources, units: UnitPref, m: Float): String =
@@ -105,6 +118,10 @@ object Fmt {
 @Composable
 @ReadOnlyComposable
 internal fun len(units: UnitPref, cm: Int): String = Fmt.len(LocalAcResources.current, units, cm)
+
+@Composable
+@ReadOnlyComposable
+internal fun chairText(c: ChairModel): String = Fmt.chair(LocalAcResources.current, c)
 
 @Composable
 @ReadOnlyComposable

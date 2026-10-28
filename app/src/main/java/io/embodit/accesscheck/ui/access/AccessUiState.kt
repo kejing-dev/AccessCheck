@@ -102,6 +102,8 @@ data class AccessUiState(
     val planeCount: Int = 0,
     // chair layer
     val chair: ChairModel = ChairModel.MANUAL,
+    /** The size under the menu's sliders while they move (applied to [chair] once they rest); null otherwise. */
+    val chairDraft: ChairModel? = null,
     val chairMode: ChairMode = ChairMode.NONE,
     val pose: ChairPose? = null,
     /** Bumped whenever the ViewModel sets the pose itself (place, rotate keys, snap, size change). */
@@ -262,6 +264,9 @@ sealed interface AccessEvent {
 
     // ---- menu / dialog
     data class ChairSelected(val model: ChairModel) : AccessEvent
+
+    /** v0.1.2: a size slider moved (whole cm); [done] when it was let go. */
+    data class ChairSized(val widthCm: Int, val lengthCm: Int, val heightCm: Int, val done: Boolean) : AccessEvent
 
     data class LanguageSelected(val language: LanguagePref) : AccessEvent
 
