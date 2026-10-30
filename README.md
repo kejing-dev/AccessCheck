@@ -4,6 +4,6 @@
 
 | 会话 | 标题 | 行数 |
 |---|---|---|
-| `5ddf5a5c` | [access-check] design · 无障碍体检 | 733 |
 | `8767d2a5` | [access-check] polish · 轮椅跟手柄射线落点摆放 | 3314 |
 | `6181b4c0` | [access-check] 发布 v0.1.2 · GitHub + 飞书 + Vibe Lab 素材 | 507 |
+| `5ddf5a5c` | [access-check] design · 无障碍体检 | 733 |
